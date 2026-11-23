@@ -3761,6 +3761,10 @@ print(f"215 the hours in the bar     {ok(_ok215)}  NY open to 16:00 on 25/11, sh
 #     the switch is in every page's bar, remembered, and on Shift+B.
 _tj216 = open(os.path.join(HERE, "backend", "static", "term.js"), encoding="utf-8").read()
 _css216 = open(os.path.join(HERE, "backend", "static", "term.css"), encoding="utf-8").read()
+# the portfolio curve writes its euros as "25.3k", with no euro sign: its labels carry the class themselves
+_pf216 = open(os.path.join(HERE, "backend", "static", "portfolio.html"), encoding="utf-8").read()
+_cv216 = _pf216[_pf216.index("function curveSVG"):_pf216.index("function curvePeriod")]
+_k216 = [l for l in _cv216.splitlines() if "<text" in l and ("kfmt(t)" in l or "/1000).toFixed(1)}k" in l)]
 _m216 = _re214.search(r"const RE = /(.+)/g;", _tj216)
 _rx216 = _re214.compile(_m216.group(1)) if _m216 else None
 _hit216 = {t: (_rx216.findall(t) if _rx216 else None) for t in
@@ -3771,9 +3775,13 @@ _ok216 = (_rx216 is not None
           and _hit216["a gain of €3,210 (+4.1%)"] == ["€3,210"]
           and all(_hit216[t] == [] for t in ("12.5%", "$412.30", "1.16 EUR/USD", "EUR/USD 1.16"))
           and 'id="blurBtn"' in _tj216 and '"pf_blur"' in _tj216 and 'e.key === "B" && e.shiftKey' in _tj216
-          and "[data-noblur]" in _tj216 and ".blur-eur .eur-amt" in _css216 and ".blur-eur input[data-eur]" in _css216)
+          and "[data-noblur]" in _tj216 and ".blur-eur .eur-amt" in _css216 and ".blur-eur input[data-eur]" in _css216
+          and len(_k216) == 3 and all('class="eur-amt"' in l for l in _k216)
+          # the cash balance per currency and DEGIRO's other credits carry no sign either
+          and '<span class="sub eur-amt">${v.toFixed(2)}</span>' in _pf216
+          and '<span class="sub eur-amt" style="white-space:nowrap">${r.eur.toFixed(2)}</span>' in _pf216)
 print(f"216 blurring euros           {ok(_ok216)}  €1.234,56 · +€12 · −€250 · € 3.4k · €1.2bn · 1.234 EUR · EUR 500 blurred; "
-      f"12.5%, $412.30 and EUR/USD 1.16 not; the € switch in the bar, kept, Shift+B")
+      f"12.5%, $412.30 and EUR/USD 1.16 not; the portfolio curve's {len(_k216)} k-labels, cash by currency and other credits too; the € switch in the bar, kept, Shift+B")
 
 # 217 the one fund: half the one fund's risk is half in it and half in
 #     cash, earning cash plus half the premium; more risk than the fund

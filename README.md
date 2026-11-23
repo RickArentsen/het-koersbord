@@ -18,6 +18,12 @@ Built and used daily since September 2026.
 - **No API key is required.** Optional keys are FRED, Finnhub, aisstream.io
   and Anthropic; Claude Code on a Claude plan can stand in for the last.
 
+![The home screen: the morning brief, today's articles, alerts, the day ahead, the portfolio and the constellation of holdings](docs/screenshots/home.png)
+
+The screenshots are taken with the terminal's own blur switch on (`€` in the
+bar, or Shift+B). It blurs every euro amount; percentages and market prices
+stay readable.
+
 ---
 
 ## The pages
@@ -48,6 +54,35 @@ Built and used daily since September 2026.
 | `FLOW` | Institutional flow | Up and down volume, Lowry's 90% days, the Zweig breadth thrust, put/call ratios, short volume, dark-pool and gamma indices, CFTC and hedge-fund leverage. |
 | `WEEK` | Week in review | Every Saturday: the book's week and what drove it, the markets, the week ahead, and a Claude note. |
 | `SYS` | Health | Every background job, data source and the database. A job that has failed for a day puts a line on the home screen. |
+
+### Screenshots
+
+**Portfolio**: the equity curve against the same euros put into an S&P 500
+tracker on the same days, with drawdown below.
+![The portfolio page](docs/screenshots/portfolio.png)
+
+**A stock page**: price against the street target with earnings, filings
+and dividends marked, and what matters now, built from every panel.
+![A stock page](docs/screenshots/stock-page.png)
+
+**MKT**: the day's read across thirteen signals in five groups, each
+measured against its own normal day.
+![The market snapshot](docs/screenshots/market.png)
+
+**FLOW**: what institutions are doing. Up and down volume, Lowry's 90% days,
+the Zweig thrust, hedge-fund leverage, DIX and gamma.
+![Institutional flow](docs/screenshots/flow.png)
+
+**READ**: the AI editor's articles, each with what changed since its last
+version.
+![Articles](docs/screenshots/articles.png)
+
+**Koers AI**: Claude's paper portfolio against the S&P 500, the Nasdaq 100
+and the owner, with a thesis and exit rule for every holding.
+![Koers AI](docs/screenshots/koers-ai.png)
+
+**OIL**: prices, the curve, supply, OPEC+ and what matters now.
+![Oil](docs/screenshots/oil.png)
 
 ---
 
