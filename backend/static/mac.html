@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MAC · Het Koersbord</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305080A'/%3E%3Cpath d='M5 23 L12 15 L17 19 L27 7' stroke='%234FA8CE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="/term.css">
+<link rel="stylesheet" href="/kit.css">
+<style>
+#tiles{grid-template-columns:repeat(auto-fill,minmax(170px,1fr));}
+.disc{font-family:var(--f-ui);font-size:.7rem;color:var(--ink-soft);margin-top:.4rem;line-height:1.5;}
+.fbar{display:flex;flex-wrap:wrap;gap:.4rem .9rem;align-items:center;margin-bottom:.5rem;font-size:.66rem;}
+.fbar .lbl{font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin-right:.3rem;}
+.ipx{display:inline-flex;gap:2px;vertical-align:middle;margin-right:.35rem;}
+.ipx i{width:5px;height:9px;background:var(--rule-strong);display:block;}
+.ipx.r3 i{background:var(--loss);} .ipx.r2 i:nth-child(-n+2){background:var(--warn);} .ipx.r1 i:first-child{background:var(--ink-soft);}
+.tbl tr.day td{color:var(--ink-soft);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;padding-top:.7rem;border-bottom:1px solid var(--rule-strong);}
+.tbl tr.day.today td{color:var(--accent);}
+.tbl tr.done td{color:var(--ink-mid);}
+.tbl tr.next td{background:var(--accent-dim);}
+.tbl td.act b{font-weight:600;color:var(--ink);}
+.ccy{display:inline-block;min-width:2.6em;font-weight:600;color:var(--ink);}
+.txt{font-family:var(--f-ui);font-size:.75rem;color:var(--ink-mid);line-height:1.6;}
+.txt p{margin:.35rem 0;}
+.txt b{color:var(--ink);font-weight:500;}
+.sec{margin:1rem 0 .35rem;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--rule);padding-bottom:.2rem;}
+.sec:first-child{margin-top:0;}
+.empty{font-size:.74rem;color:var(--ink-soft);font-family:var(--f-ui);padding:.4rem 0;}
+.src2{font-size:.6rem;color:var(--ink-soft);}
+
+/* a row with a breakdown opens one: what moved inside the release */
+.tbl tr.has-det{cursor:pointer;}
+.tbl tr.has-det td:nth-child(2)::after{content:" ▸";color:var(--ink-soft);}
+.tbl tr.has-det.open td:nth-child(2)::after{content:" ▾";color:var(--accent);}
+.tbl tr.has-det.open td{background:#0D161B;}
+.tbl tr.det > td{padding:0;background:var(--sunk);cursor:default;white-space:normal;text-align:left;}
+.mdet{padding:.7rem .8rem .8rem;border-left:2px solid var(--accent);}
+.mdet .mhd{font-size:.8rem;display:flex;gap:.6rem;flex-wrap:wrap;align-items:baseline;}
+.mdet .mhd .dim{font-size:.66rem;}
+.mdet .msay{font-family:var(--f-ui);font-size:.8rem;color:var(--ink);margin:.35rem 0 .5rem;line-height:1.45;}
+.mdet .mcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:1px;background:var(--rule);margin:.4rem 0 .6rem;}
+.mdet .mcards div{background:var(--surface);padding:.3rem .45rem;}
+.mdet .mcards .k{font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);}
+.mdet .mcards .v{font-size:.9rem;font-weight:600;}
+.mdet .mcards .t{font-size:.6rem;color:var(--ink-soft);}
+.mdet .two{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:1rem;align-items:start;}
+@media(max-width:1000px){.mdet .two{grid-template-columns:1fr;}}
+.mbars{font-size:.7rem;}
+.mbar{display:grid;grid-template-columns:minmax(150px,1.3fr) 2fr 5.2rem;gap:.5rem;align-items:center;padding:.1rem 0;}
+.mbar .l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-mid);font-family:var(--f-ui);}
+.mbar.d0 .l{color:var(--ink);font-weight:600;font-family:var(--f-mono);}
+.mbar.d1 .l{padding-left:.6rem;color:var(--ink);} .mbar.d2 .l{padding-left:1.3rem;} .mbar.d3 .l{padding-left:2rem;} .mbar.d4 .l{padding-left:2.7rem;}
+.mbar.side{opacity:.62;} .mbar.side.first{border-top:1px dotted var(--rule-strong);margin-top:.2rem;padding-top:.3rem;}
+.mbar .t{position:relative;height:11px;background:var(--sunk);}
+.mbar .t .z{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--rule-strong);}
+.mbar .t i{position:absolute;top:1px;bottom:1px;background:var(--gain);}
+.mbar .t i.n{background:var(--loss);}
+.mbar.d0 .t i{top:0;bottom:0;}
+.mbar .v{text-align:right;font-variant-numeric:tabular-nums;}
+.mbar .v small{color:var(--ink-soft);font-size:.58rem;margin-left:.2rem;}
+.mdet .chips{display:flex;flex-wrap:wrap;gap:.3rem;margin:.2rem 0 .4rem;}
+.mdet .chips .chip{font-size:.6rem;}
+</style>
+</head>
+<body>
+<div id="shell"></div>
+<div class="wrap" id="app"><div class="center">Loading<span class="blink">_</span></div></div>
+<script src="/term.js"></script>
+<script src="/kit.js"></script>
+<script src="/mac.js"></script>
+</body>
+</html>

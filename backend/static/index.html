@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Het Koersbord</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305080A'/%3E%3Cpath d='M5 23 L12 15 L17 19 L27 7' stroke='%234FA8CE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="/term.css">
+</head>
+<body>
+<div id="shell"></div>
+<div class="wrap" id="app"><div class="center">Loading<span class="blink">_</span></div></div>
+
+<script src="/term.js"></script>
+<script src="/stars.js"></script>
+<script>
+/* ==========================================================================
+   The home screen.
+
+   Two fetches, never one. The portfolio half (/api/pf/home) is local
+   arithmetic and always fast; the briefing half (/api/pf/brief) depends on
+   three other people's servers. Asking for them together would mean a slow
+   news provider delaying your net worth, so they load in parallel and each
+   renders as it arrives.
+   ========================================================================== */
+
+$("#shell").innerHTML = termBar({
+  right: `<span class="live shut" id="liveDot" title="Live price feed"><i></i><span id="liveTxt">offline</span></span>
+          <button class="tbtn" id="setBtn">Settings</button>
+          <button class="tbtn" id="helpBtn">Help</button>
+          <button class="tbtn on" id="reloadBtn">Reload</button>`
+});
+wireShell();
+$("#helpBtn").onclick = showHelp;
+$("#reloadBtn").onclick = () => load();
+$("#setBtn").onclick = settingsModal;
+
+let DATA = null, BRIEF = null, AM = null, READ = null;
+
+async function load(){
+  const btn = $("#reloadBtn");
+  btn.textContent = "Loading…"; btn.disabled = true;
+  Stars.reload();                             // the constellation asks again too
+  render();                                   // paint the skeleton immediately
+  const port = fetch("/api/pf/home").then(async r => {
+    if(!r.ok) throw new Error(`${r.status} ${(await r.text()).slice(0,140)}`);
+    DATA = await r.json(); render(); liveStart();
+  }).catch(e => {
+    DATA = {error: e.message}; render();
+  });
+  const brief = fetch("/api/pf/brief").then(async r => {
+    if(!r.ok) throw new Error(`${r.status}`);
+    BRIEF = await r.json(); render();
+  }).catch(e => { BRIEF = {error: e.message}; render(); });
+  const read = fetch("/api/pf/read/home").then(async r => {
+    READ = r.ok ? await r.json() : {error: `${r.status}`}; render();
+  }).catch(e => { READ = {error: e.message}; render(); });
+  const am = fetch("/api/pf/morning/latest").then(async r => {
+    AM = r.ok ? await r.json() : null; render();
+  }).catch(() => { AM = null; });
+  await Promise.allSettled([port, brief, am, read]);
+  btn.textContent = "Reload"; btn.disabled = false;
+}
+
+function render(){
+  const T = (DATA && DATA.totals) || {};
+  $("#app").innerHTML = `
+    ${morningLine()}
+    ${topStrip()}
+    ${headline(T)}
+    ${DATA && !DATA.error && !DATA.empty ? `<div id="starsSlot"></div>` : ""}
+    <div class="cols c-4">${changedPanel()}${marketPanel()}</div>
+    ${newsBanner()}
+    ${earningsBanner()}
+    ${macroBanner()}
+    ${modulesPanel()}
+    <div class="dim" style="font-size:.66rem;padding:.1rem .1rem 1rem;line-height:1.5">
+      ${DATA && DATA.asof ? `Portfolio as of ${esc(dmyTime(DATA.asof))}. ` : ""}Market rows are the
+      last close, or the live price while that exchange is open. Nothing on this screen streams —
+      press Reload — except the six figures above, which do, and the constellation's rings.
+    </div>`;
+  wireNews();
+  if ($("#starsSlot")) Stars.mount($("#starsSlot"));
+}
+
+
+/* ================= the banner, live =================
+   The same stream PORT uses. The portfolio figures at the top of this screen
+   were a snapshot from page load, which is a surprising thing for a screen
+   that looks like a terminal — so they now tick, with the same one-off green
+   or red wash on whatever moved.
+
+   Only the six headline figures update. The panels below are built from a
+   full dashboard and would need a rebuild, which is what Reload is for. */
+
+let ES = null, PREV = {}, RETRY = 0, TIMER = null, LAST_EVENT = 0;
+
+function liveDot(cls, txt, title){
+  const d = $("#liveDot"), t = $("#liveTxt");
+  if(!d) return;
+  d.className = "live " + cls; d.title = title || "";
+  if(t) t.textContent = txt;
+}
+
+function liveStart(){
+  if(ES || !window.EventSource) return;
+  liveDot("", "connecting", "opening the price feed");
+  ES = new EventSource("/api/pf/live");
+  ES.onopen = () => { RETRY = 0; };
+  ES.onmessage = ev => { try{ applyLive(JSON.parse(ev.data)); }catch(e){} };
+  ES.onerror = () => {
+    if(ES && ES.readyState === EventSource.CLOSED){
+      ES = null;
+      const wait = Math.min(60000, 2000 * Math.pow(2, RETRY++));
+      liveDot("shut", "retrying", `the feed closed — trying again in ${Math.round(wait/1000)}s`);
+      clearTimeout(TIMER); TIMER = setTimeout(liveStart, wait);
+    } else liveDot("shut", "reconnecting", "the connection dropped — retrying");
+  };
+}
+
+document.addEventListener("visibilitychange", () => {
+  if(document.hidden){
+    clearTimeout(TIMER);
+    if(ES){ ES.close(); ES = null; }
+    liveDot("shut", "paused", "this tab is in the background");
+  } else { RETRY = 0; liveStart(); }
+});
+
+setInterval(() => {
+  if(!ES || !LAST_EVENT || Date.now() - LAST_EVENT < 45000) return;
+  liveDot("shut", "stalled", "no heartbeat for 45s — reopening the feed");
+  ES.close(); ES = null; RETRY = 0; liveStart();
+}, 15000);
+
+function applyLive(p){
+  LAST_EVENT = Date.now();
+  if(p.state === "streaming")
+    p.market_open === false ? liveDot("shut","market shut","connected, nothing trading")
+      : liveDot("on","live", p.detail);
+  else if(p.state === "polling") liveDot("poll","polling", p.detail);
+  else liveDot("shut", p.state || "off", p.detail);
+
+  Stars.tick(p.positions || []);
+  if(!DATA || !DATA.totals || !p.totals) return;
+  const T = p.totals, B = DATA.totals;
+
+  set("#fNet", eur(T.net_worth_eur), "net", T.net_worth_eur);
+  set("#fNetS", `${eur(T.value_eur)} invested · ${eur(B.cash_eur ?? 0)} cash`);
+  set("#fDay", `${eur(T.day_eur)} <span style="font-size:.74rem;font-weight:500">${
+    T.day_pct==null?"":pct(T.day_pct)}</span>`, "day", T.day_eur);
+  cls("#fDay", "v " + sgn(T.day_eur));
+  set("#fDayS", `share price ${eur(T.day_price_eur)} &middot; currency ${eur(T.day_fx_eur)}`);
+  set("#fDayT", dayTag(T.day_tags));
+  set("#fDayL", lastLine(T));
+  set("#fDayR", rangeLine(p.day_range));
+  // the movers panel's rows move with the feed too, by holding
+  for(const r of p.positions || []){
+    const el = document.querySelector(`#chg .row[data-isin="${CSS.escape(r.isin || "")}"]`);
+    if(!el) continue;
+    const m = shownMove(r);
+    el.querySelector(".px").className = "px " + sgn(m.eur);
+    el.querySelector(".px").innerHTML = eur(m.eur, 0);
+    el.querySelector(".ch").className = "ch " + sgn(m.pct);
+    el.querySelector(".ch").innerHTML = (m.pct == null ? "–" : pct(m.pct)) + (m.lab ? dayTag([m.lab]) : "");
+  }
+  set("#fUn", eur(T.unreal_eur), "un", T.unreal_eur);
+  cls("#fUn", "v " + sgn(T.unreal_eur));
+  if(B.cost_eur) set("#fUnS", pct(T.unreal_eur / B.cost_eur * 100) + " on cost");
+
+  // Total return moves with the market too: profit is net worth minus the
+  // capital you put in, and net worth is what just changed. Capital is the
+  // deposits plus what positions entered by hand cost.
+  const cap = B.capital_eur ?? B.net_deposits_eur;
+  if(cap){
+    const profit = T.net_worth_eur - cap;
+    set("#fTot", eur(profit), "tot", profit);
+    cls("#fTot", "v " + sgn(profit));
+    set("#fTotS", `${pct(profit / cap * 100)} on ${eur(cap)} in`);
+  }
+}
+
+function set(sel, html, id, val){
+  const el = $(sel);
+  if(!el || (id && PREV[id] === val)) return;
+  el.innerHTML = html;
+  if(id) flash(el, id, val);
+}
+function cls(sel, c){ const el = $(sel); if(el) el.className = c; }
+function flash(el, id, val){
+  const was = PREV[id]; PREV[id] = val;
+  if(was === undefined || was === val || val == null) return;
+  el.classList.remove("fl-up","fl-dn");
+  void el.offsetWidth;
+  el.classList.add(val > was ? "fl-up" : "fl-dn");
+}
+
+/* ---------- helpers ---------- */
+const ago = ts => {
+  if(!ts) return "";
+  const m = Math.max(0, (Date.now()/1000 - ts) / 60);
+  if(m < 1)  return "now";
+  if(m < 60) return Math.round(m) + "m";
+  if(m < 48*60) return Math.round(m/60) + "h";
+  return Math.round(m/1440) + "d";
+};
+const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const isToday = d => d === new Date().toISOString().slice(0,10);
+const loading = txt => `<div class="dim" style="padding:.3rem 0">${txt}<span class="blink">_</span></div>`;
+
+/* ---------- the morning brief, in one line ----------
+   The brief itself lives on ALRT; this is the doorbell. It is marked new until
+   that morning's brief has been opened, remembered in this browser only. */
+function mdLite(s){
+  return esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+    .replace(/\[([^\]]+)\]\((\/[^)\s]*)\)/g, (m, t, h) => `<a href="${h}">${t}</a>`);
+}
+function morningLine(){
+  if(!AM || !AM.ok) return "";
+  let seen = null;
+  try{ seen = localStorage.getItem("alrt_seen"); }catch{}
+  const fresh = seen !== AM.d;
+  const day = new Date(AM.d + "T12:00").toLocaleDateString("en-GB", {weekday: "long"});
+  const s = (AM.summary || [])[0] || "";
+  return `<a class="panel amline${fresh ? " fresh" : ""}" href="/m/ALRT?d=${esc(AM.d)}" style="display:flex;gap:.7rem;align-items:baseline;padding:.45rem .7rem;flex-wrap:wrap;color:inherit;text-decoration:none">
+    <b style="color:var(--accent);letter-spacing:.12em;font-size:.72rem">ALRT</b>
+    <span style="font-size:.72rem;color:var(--ink)">Morning brief · ${esc(day)} ${esc(dmy(AM.d).slice(0,5))}${fresh ? ` <span style="color:var(--warn)">● new</span>` : ""}</span>
+    <span class="sans" style="font-size:.74rem;color:var(--ink-mid);flex:1;min-width:220px">${mdLite(s).replace(/<a [^>]*>|<\/a>/g, "")}</span>
+    <span style="font-size:.68rem;color:var(--accent)">Read &rsaquo;</span></a>`;
+}
+
+/* ---------- top strip: two headlines, alerts, the day ahead ---------- */
+function topStrip(){
+  return `<div class="cols c-top">${topNews()}${alertsPanel()}${previewPanel()}</div>`;
+}
+
+function newsRow(n, big){
+  const chips = [
+    ...(n.mine || []).map(t => `<span class="chip hold">${esc(t)}</span>`),
+    ...(n.macro && !(n.mine||[]).length ? [`<span class="chip">macro</span>`] : []),
+  ].join("");
+  return `<a class="news ${big?"big":""}" href="${esc(n.url)}" target="_blank" rel="noopener">
+    <span class="hl">${esc(n.headline)}</span>
+    <span class="meta">${chips}<span class="dim">${esc(n.source||"")}${
+      n.ts ? ` · ${ago(n.ts)}` : ""}</span></span>
+    ${big && n.summary ? `<span class="sum">${esc(n.summary.slice(0,180))}</span>` : ""}
+  </a>`;
+}
+
+/* Today (build 43): the day's live coverage and the articles written for you
+   on READ. Until the first article exists, the feed's top two stand in. */
+function topNews(){
+  const R = READ && !READ.error ? READ : null;
+  const live = R && R.live && R.live.main ? R.live : null;
+  const arts = R ? (R.articles || []).slice(0, 3) : [];
+  if(!R && !BRIEF) return panel("Today", loading("finding today's coverage"), null, "READ");
+  const lv = live ? `<a class="news big" href="${esc(live.main.url)}" target="_blank" rel="noopener">
+      <span class="meta"><span class="chip ${live.state === "live" ? "hold" : ""}">${esc(live.label)}</span>
+        <span class="dim">${esc(live.main.source || "")}${live.main.ts ? " · " + ago(live.main.ts) + " ago" : ""}</span></span>
+      <span class="hl">${esc(live.main.title)}</span></a>` : "";
+  const ar = arts.map(a => `<a class="news" href="/m/READ#a=${a.id}">
+      <span class="hl">${esc(a.headline)}</span>
+      <span class="meta"><span class="chip">${esc(a.kind_label)}</span><span style="color:var(--warn);letter-spacing:.05em">${"●".repeat(a.importance)}</span>
+        ${(a.tickers || []).slice(0, 3).map(t => `<span class="chip">${esc(t)}</span>`).join("")}
+        <span class="dim">${ago(Date.parse(a.created) / 1000)} ago</span></span>
+      ${a.dek ? `<span class="sum">${esc(a.dek.slice(0, 170))}</span>` : ""}</a>`).join("");
+  if(!arts.length){
+    const N = (BRIEF && BRIEF.news) || {};
+    const old = (N.top || []).slice(0, live ? 1 : 2).map(n => newsRow(n, !live)).join("");
+    return panel("Today", lv + (old || (BRIEF ? noNews(N) : loading("fetching headlines")))
+      + `<div class="dim" style="font-size:.64rem;padding-top:.3rem">Articles written for you appear here once
+         <a href="/m/READ">READ</a> has scanned the news.</div>`, live ? "live coverage" : null, "READ");
+  }
+  return panel("Today", lv + ar, `${R.today.written} written today`, "READ");
+}
+
+function noNews(N){
+  const msg = (BRIEF && BRIEF.error) || (N && N.error) || "nothing yet";
+  const key = N && N.has_key;
+  return `<div class="note"><b>No headlines</b>${esc(msg)}${
+    key ? "" : `<br>Add a free news API key under <b>Settings</b> to get company,
+    macro and geopolitical coverage. Without one this falls back to Yahoo, which
+    only carries news about tickers you already hold.`}</div>`;
+}
+
+function panel(title, body, hint, code){
+  return `<div class="panel">
+    <header><h2>${esc(title)}</h2>
+      ${hint ? `<span class="hint">${hint}</span>` : ""}
+      ${code ? `<a class="code" href="/m/${code}">${code} &rsaquo;</a>` : ""}</header>
+    <div class="body">${body}</div></div>`;
+}
+
+function alertsPanel(){
+  if(!DATA) return panel("Alerts", loading("reading the ledger"));
+  const a = (DATA.alerts || []).slice(0, 6);
+  const more = (DATA.alerts || []).length - a.length;
+  return panel("Alerts", a.length ? a.map(x => `<div class="alert a-${esc(x.level)}">
+      ${MOD[x.code] ? `<a class="tag" href="${esc(x.href || MOD[x.code].href)}" title="open ${esc(MOD[x.code].title)}">${esc(x.code)}</a>` : `<span class="tag">${esc(x.code)}</span>`}
+      <span><span class="tx">${esc(x.text)}</span>${
+        x.detail ? `<br><span class="dt">${esc(x.detail)}</span>` : ""}</span>
+    </div>`).join("") + (more ? `<div class="dim" style="font-size:.66rem;margin-top:.3rem">
+      and ${more} more</div>` : "")
+    : `<div class="dim">Nothing needs attention.</div>`,
+    `<a href="#" id="ruleBtn" style="font-size:.66rem">+ rule</a>`);
+}
+
+function previewPanel(){
+  if(!BRIEF) return panel("The day ahead", loading("reading the calendars"), null, "ALRT");
+  const p = BRIEF.preview || {};
+  if(p.empty) return panel("The day ahead",
+    `<div class="dim">Nothing scheduled this week that touches your book.</div>`, null, "ALRT");
+  const when = p.is_today ? "today" : DAYS[new Date(p.date+"T12:00").getDay() === 0 ? 6
+                : new Date(p.date+"T12:00").getDay()-1] + " " + dmy(p.date);
+  return panel("The day ahead", `
+    ${p.looked_ahead ? `<div class="dim" style="font-size:.66rem;margin-bottom:.3rem">
+      Nothing today — next is ${esc(when)}.</div>` : ""}
+    <div class="rows">
+      ${(p.earnings||[]).map(e => `<div class="row">
+        <span class="nm"><b class="tkr">${esc(e.ticker)}</b> earnings${
+          e.time ? ` <span class="dim">${esc(e.time)}</span>` : ""}</span>
+        <span class="px dim">${e.eps_estimate!=null?`est ${e.eps_estimate}`:""}</span>
+        <span class="ch dim">${e.weight?e.weight.toFixed(1)+"%":""}</span></div>`).join("")}
+      ${(p.macro||[]).map(m => `<div class="row">
+        <span class="nm"><span class="imp i${m.rank}"></span>${esc(m.title)}
+          <span class="dim">${esc(m.currency)}</span></span>
+        <span class="px dim">${esc(m.time||"")}</span>
+        <span class="ch dim">${m.forecast?`f ${esc(m.forecast)}`:""}</span></div>`).join("")}
+    </div>`, p.is_today ? "today · Amsterdam time" : "Amsterdam time", "ALRT");
+}
+
+/* ---------- the portfolio banner ---------- */
+function headline(T){
+  if(DATA && DATA.error) return `<div class="panel"><div class="body">
+    <div class="note"><b>Backend unreachable</b>
+    Start it with <code>python portfolio_app.py</code> in the backend folder.<br>
+    <span class="dim">${esc(DATA.error)}</span></div></div></div>`;
+  if(!DATA) return `<div class="panel"><header><h2>Portfolio</h2></header>
+    <div class="body">${loading("replaying the ledger")}</div></div>`;
+  if(DATA.empty) return `<div class="panel"><div class="body"><div class="note">
+    <b>No ledger yet</b> Open <a href="/portfolio">PORT</a> and import your DEGIRO exports,
+    or enter a trade by hand.</div></div></div>`;
+  return `<div class="panel">
+    <header><h2>Portfolio</h2>
+      <span class="hint">${T.positions ?? 0} open · since ${esc(dmy(T.since))}</span>
+      <a class="code" href="/portfolio">PORT &rsaquo;</a></header>
+    <div class="figs">
+      <div class="fig lead"><span class="k">Net worth</span>
+        <span class="v" id="fNet">${eur(T.net_worth_eur ?? T.value_eur)}</span>
+        <span class="s" id="fNetS">${eur(T.value_eur)} invested · ${eur(T.cash_eur ?? 0)} cash</span></div>
+      <div class="fig lead"><span class="k">Total return</span>
+        <span class="v ${sgn(T.profit_eur)}" id="fTot">${eur(T.profit_eur)}</span>
+        <span class="s" id="fTotS">${T.total_return_pct==null?"–":pct(T.total_return_pct)} on ${eur(T.capital_eur ?? T.net_deposits_eur)} in</span></div>
+      <div class="fig"><span class="k">Day<span id="fDayT">${dayTag(T.day_tags)}</span></span>
+        <span class="v ${sgn(T.day_eur)}" id="fDay">${eur(T.day_eur)}
+          <span style="font-size:.74rem;font-weight:500">${T.day_pct==null?"":pct(T.day_pct)}</span></span>
+        <span class="s" id="fDayS">share price ${eur(T.day_price_eur)} &middot; currency ${eur(T.day_fx_eur)}</span>
+        <span class="s" id="fDayL">${lastLine(T)}</span>
+        <span class="s" id="fDayR">${rangeLine(T.day_range)}</span></div>
+      <div class="fig"><span class="k">Year to date</span>
+        <span class="v ${sgn(T.ytd_twr_pct)}">${T.ytd_twr_pct==null?"–":pct(T.ytd_twr_pct)}</span>
+        <span class="s">${T.ytd_twr_pct!=null ? `${eur(T.ytd_eur)} · from ${eur(T.ytd_open_eur)} on 1 Jan`
+          : (T.ytd_coverage_pct!=null ? `only ${T.ytd_coverage_pct}% of this year could be priced`
+             : "no price history for this year")}</span></div>
+      <div class="fig"><span class="k">Unrealised</span>
+        <span class="v ${sgn(T.unreal_eur)}" id="fUn">${eur(T.unreal_eur)}</span>
+        <span class="s" id="fUnS">${pct(T.unreal_pct)} on cost</span></div>
+      <div class="fig"><span class="k">Realised</span>
+        <span class="v ${sgn(T.realised_eur)}">${eur(T.realised_eur)}</span>
+        <span class="s">banked, all closed trades</span></div>
+    </div></div>`;
+}
+
+/* ---------- what changed: the five you own most of, then the movers ---------- */
+function changedPanel(){
+  if(!DATA || !DATA.changed) return panel("What changed", DATA ? "" : loading("pricing the book"));
+  const C = DATA.changed;
+  const row = r => { const m = shownMove(r); return `<div class="row" data-isin="${esc(r.isin || "")}">
+    <span class="nm"><b class="tkr">${esc(r.ticker || "?")}</b>${
+      r.stale ? ' <span class="dim">·stale</span>' : ""}${
+      r.why === "weight" ? ` <span class="dim">${r.weight!=null?r.weight.toFixed(1)+"%":""}</span>` : ""}</span>
+    <span class="px ${sgn(m.eur)}">${eur(m.eur, 0)}</span>
+    <span class="ch ${sgn(m.pct)}">${m.pct==null?"–":pct(m.pct)}${m.lab ? dayTag([m.lab]) : ""}</span></div>`; };
+  return `<div class="panel" id="chg">
+    <header><h2>What changed</h2>
+      <span class="hint">${C.n_priced}/${C.n_live} priced</span>
+      <a class="code" href="/portfolio">PORT &rsaquo;</a></header>
+    <div class="body">
+      <div class="grp">Your five biggest positions</div>
+      <div class="rows">${(C.weights||[]).map(row).join("") ||
+        `<div class="dim">No positions.</div>`}</div>
+      <div class="grp">Biggest movers not already above</div>
+      <div class="rows">${(C.movers||[]).map(row).join("") ||
+        `<div class="dim">Nothing else moved today.</div>`}</div>
+    </div></div>`;
+}
+
+/* ---------- the market board ---------- */
+function marketPanel(){
+  if(!DATA) return panel("Markets", loading("fetching quotes"));
+  const rows = DATA.market || [];
+  const meta = DATA.market_meta || {};
+  const groups = [...new Set(rows.map(r => r.g))];
+  const fmt = r => {
+    if(r.price == null) return "–";
+    if(r.u === "fx")  return r.price.toFixed(4);
+    if(r.u === "pct") return r.price.toFixed(2) + "%";
+    if(r.u === "usd") return "$" + nf(r.price, 2);
+    return nf(r.price, 2);
+  };
+  /* A yield moving 4.00 to 4.10 is +10bp. Rendering that as "+2.5%" is
+     arithmetically true and says nothing about the bond market. */
+  const chg = r => r.chg_bp != null ? (r.chg_bp >= 0 ? "+" : "") + r.chg_bp + "bp"
+                 : r.chg_pct == null ? "–" : pct(r.chg_pct);
+  const chgSgn = r => sgn(r.chg_bp != null ? r.chg_bp : r.chg_pct);
+
+  const live = rows.filter(r => r.price != null).length;
+  const hint = !rows.length ? "nothing to show"
+    : live < rows.length ? `${rows.length - live} of ${rows.length} unreachable`
+    : meta.src === "board" && meta.age_s != null
+      ? `${meta.age_s < 90 ? "seconds" : Math.round(meta.age_s/60) + " minutes"} old`
+      : "last close or live";
+
+  const body = !live
+    ? `<div class="note"><b>No prices</b>${esc(meta.note ||
+        "the price feed returned nothing for any symbol")}
+        — the <a href="/m/MKT">MKT</a> screen has a Sources panel that names the
+        failing feed.</div>`
+    : groups.map(g => `<div><div class="grp">${esc(g)}</div><div class="rows">
+        ${rows.filter(r => r.g === g).map(r => `<div class="row">
+          <span class="nm">${esc(r.n)}${r.stale && r.price != null ? ' <span class="dim">·stale</span>' : ''}</span>
+          <span class="px">${fmt(r)}</span>
+          <span class="ch ${chgSgn(r)}">${chg(r)}</span></div>`).join("")}
+      </div></div>`).join("");
+
+  return `<div class="panel">
+    <header><h2>Markets</h2>
+      <span class="hint">${esc(hint)}</span>
+      <a class="code" href="/m/MKT">MKT &rsaquo;</a></header>
+    <div class="body ${live ? "mktgrid" : ""}">${body}</div></div>`;
+}
+
+/* ---------- the news banner ---------- */
+function newsBanner(){
+  if(!BRIEF) return panel("Headlines", loading("fetching"), null, "NEWS");
+  const N = BRIEF.news || {};
+  const items = N.banner || [];
+  if(!items.length && (BRIEF.error || N.error)) return "";   // the top panel already said so
+  return `<div class="panel">
+    <header><h2>Headlines</h2>
+      <span class="hint">${items.length} more, ranked by what you hold and what moves markets${
+        N.provider ? ` · ${esc(N.provider)}` : ""}</span>
+      <a class="code" href="/m/NEWS">NEWS &rsaquo;</a></header>
+    <div class="body newsgrid">
+      ${items.length ? items.map(n => newsRow(n, false)).join("")
+        : `<div class="dim">Nothing beyond the two above.</div>`}
+    </div></div>`;
+}
+
+/* ---------- earnings, this week, your holdings only ---------- */
+function weekGrid(payload, renderDay, empty){
+  const days = (payload.days || []).slice(0, 5);   // Mon–Fri; weekends carry nothing
+  return `<div class="week">
+    ${days.map((d, i) => `<div class="wday ${isToday(d.date)?"now":""}">
+      <div class="wh">${DAYS[i]} <span class="dim">${esc(dmy(d.date).slice(0,5))}</span></div>
+      ${d.events.length ? d.events.map(renderDay).join("")
+        : `<div class="dim wempty">—</div>`}
+    </div>`).join("")}
+  </div>` + ((payload.count === 0) ? `<div class="dim" style="padding:.4rem .1rem 0">${empty}</div>` : "");
+}
+
+/* Most weeks of the year nobody reports, and an empty grid on its own reads as
+   a broken panel. When the week is quiet, say so and show what IS coming —
+   which is the thing you actually wanted to know. */
+function emptyEarnings(E){
+  const n = E.next_up || [];
+  if(!n.length) return "None of your holdings report this week, and none has a "
+    + "future date on Yahoo either.";
+  return `<span class="dim">Nobody reports this week. Next up: </span>`
+    + n.slice(0, 4).map(u => `<b class="tkr">${esc(u.ticker)}</b> `
+        + `<span class="dim">${dmy(u.date).slice(0,5)}`
+        + `${u.days != null ? ` · ${u.days}d` : ""}</span>`).join(`<span class="dim"> · </span>`);
+}
+
+function earningsBanner(){
+  if(!BRIEF) return panel("Earnings this week", loading("checking your holdings"), null, "ERN");
+  const E = BRIEF.earnings || {};
+  if(E.error) return panel("Earnings this week",
+    `<div class="note"><b>Could not read the earnings calendar</b>${esc(E.error)}${
+      (E.failed_symbols||[]).length ? `<br><span class="dim">first refusals: ${
+        esc(E.failed_symbols.join(", "))}</span>` : ""}</div>`, null, "ERN");
+  /* "Nobody reports this week" and "the feed is broken" are opposite facts and
+     used to render identically. The hint now says which holdings were actually
+     checked, so an empty week reads as a quiet week. */
+  const nodate = (E.failed || 0) - (E.unreachable || 0);
+  const hint = `${E.count || 0} from ${E.resolved != null ? E.resolved : (E.symbols||0)}`
+    + ` of your ${E.symbols || 0} holdings`
+    + (E.from_nasdaq ? ` · ${E.from_nasdaq} from Nasdaq's calendar` : "")
+    + (nodate > 0 ? ` · ${nodate} have no date on Yahoo` : "")
+    + (E.unreachable && !E.degraded ? ` · Yahoo did not answer for ${E.unreachable}` : "")
+    + (E.partial ? " · still fetching the rest" : "");
+  return `<div class="panel">
+    <header><h2>Earnings this week</h2>
+      <span class="hint">${esc(hint)}</span>
+      <a class="code" href="/m/ERN">ERN &rsaquo;</a></header>
+    <div class="body">${E.degraded ? `<div class="note" style="margin-bottom:.4rem"><b>Not a quiet week, an unknown one</b>${esc(E.degraded)}.</div>` : ""}${weekGrid(E, e => `<div class="ev">
+      <a href="/m/ERN/${encodeURIComponent(e.ticker)}?d=${esc(e.date)}" title="expectations, the numbers live, the report"><b class="tkr">${esc(e.ticker)}</b></a>
+      <span class="dim">${e.weight?e.weight.toFixed(1)+"%":""}${e.time?" · "+esc(e.time):""}</span>
+      ${e.eps_estimate!=null?`<span class="dim">est ${e.eps_estimate}</span>`:""}
+      ${e.reported?`<span class="pos">reported ${e.eps_actual}</span>`:""}
+    </div>`, emptyEarnings(E))}</div></div>`;
+}
+
+/* ---------- macro, this week ---------- */
+function macroBanner(){
+  if(!BRIEF) return panel("Macro this week", loading("fetching the calendar"), null, "MAC");
+  const M = BRIEF.macro || {};
+  if(M.error) return panel("Macro this week",
+    `<div class="note"><b>Could not read the macro calendar</b>${esc(M.error)}</div>`, null, "MAC");
+  return `<div class="panel">
+    <header><h2>Macro this week</h2>
+      <span class="hint">${M.count || 0} high and medium impact releases · USD, EUR, GBP · Amsterdam time</span>
+      <a class="code" href="/m/MAC">MAC &rsaquo;</a></header>
+    <div class="body">${weekGrid(M, m => `<div class="ev">
+      <span class="imp i${m.rank}"></span><b>${esc(m.title)}</b>
+      <span class="dim">${esc(m.currency)}${m.time?" · "+esc(m.time):""}</span>
+      ${m.forecast?`<span class="dim">f ${esc(m.forecast)}${m.previous?` / p ${esc(m.previous)}`:""}</span>`:""}
+    </div>`, "Nothing high-impact scheduled this week.")}</div></div>`;
+}
+
+/* ---------- modules ---------- */
+function modulesPanel(){
+  return `<div class="panel">
+    <header><h2>Modules</h2>
+      <span class="hint">click one, or type its code into the command line — HELP lists them</span></header>
+    <div class="mods">
+      ${MODULES.map(m => `<a class="mod ${m.state}" href="${m.href}">
+        <span class="code">${m.code}</span>
+        <span class="ttl">${esc(m.title)}</span>
+        <span class="st">${m.state === "live" ? "● live" : (m.state === "next" ? "◆ next up" : "○ planned")}</span>
+      </a>`).join("")}
+    </div></div>`;
+}
+
+/* ---------- settings and rules ---------- */
+function modal(title, body, foot){
+  let el = document.createElement("div");
+  el.id = "modalRoot";
+  el.innerHTML = `<div class="scrim"><div class="panel modal">
+    <header><h2>${esc(title)}</h2><button class="tbtn" data-x>Close</button></header>
+    <div class="body">${body}</div>${foot?`<div class="mfoot">${foot}</div>`:""}
+  </div></div>`;
+  document.body.appendChild(el);
+  const close = () => el.remove();
+  el.querySelector("[data-x]").onclick = close;
+  el.firstChild.onclick = e => { if(e.target === el.firstChild) close(); };
+  document.addEventListener("keydown", function k(e){
+    if(e.key === "Escape"){ close(); document.removeEventListener("keydown", k); }});
+  return {el, close};
+}
+
+async function settingsModal(){
+  let cur = {};
+  try{ cur = await (await fetch("/api/pf/settings")).json(); }catch{}
+  const m = modal("Settings", `
+    <div class="fld"><label for="sKey">News API key</label>
+      <input id="sKey" type="password" autocomplete="off" spellcheck="false"
+             placeholder="${cur.has_news_key ? "stored: "+esc(cur.news_key_hint||"") : "paste a key"}"></div>
+    <p class="dim" style="font-size:.7rem;line-height:1.55;margin:.2rem 0 .6rem">
+      A free key from <b>finnhub.io</b> gives company, macro and geopolitical headlines.
+      It is stored in your local database and never leaves this machine.
+      Without one the app falls back to Yahoo, which only carries news about tickers you hold.</p>
+    <div class="fld"><label for="sFred">FRED API key</label>
+      <input id="sFred" type="password" autocomplete="off" spellcheck="false"
+             placeholder="${cur.has_fred_key ? "stored: "+esc(cur.fred_key_hint||"") : "paste a key"}"></div>
+    <p class="dim" style="font-size:.7rem;line-height:1.55;margin:.2rem 0 .6rem">
+      Free from <b>fred.stlouisfed.org</b>. Yahoo has no 2-year Treasury, no policy
+      rates and no credit spreads, so this is what fills the Rates section on
+      <a href="/m/MKT">MKT</a>. There is also a keyless CSV route which is tried
+      first; the key is the fallback for when it stops working.</p>
+    <div class="fld"><label for="sAis">aisstream.io key</label>
+      <input id="sAis" type="password" autocomplete="off" spellcheck="false"
+             placeholder="${cur.has_ais_key ? "stored: "+esc(cur.ais_key_hint||"") : "paste a key"}"></div>
+    <p class="dim" style="font-size:.7rem;line-height:1.55;margin:.2rem 0 .6rem">
+      Free from <b>aisstream.io</b> (sign in with GitHub, then API keys). It puts live tankers
+      worldwide on the <a href="/m/MKT/oil">OIL</a> map; without it the map shows the Baltic only.
+      The stream runs only while the oil page is open. Stored in your local database; sent only to
+      aisstream.io. To remove it, type a single space and save.</p>
+    <div class="fld"><label for="sProv">Provider</label>
+      <select id="sProv">
+        <option value="finnhub"${cur.news_provider==="finnhub"?" selected":""}>finnhub (needs a key)</option>
+        <option value="yahoo"${cur.news_provider==="yahoo"?" selected":""}>yahoo (no key, holdings only)</option>
+      </select></div>
+    <div class="fld"><label for="sWriter">Claude write-ups by</label>
+      <select id="sWriter">${Object.entries(cur.ern_writers || {}).map(([k, v]) =>
+        `<option value="${esc(k)}"${cur.ern_writer===k?" selected":""}>${esc(v)}</option>`).join("")}
+      </select></div>
+    <div class="fld"><label for="sCcModel">Claude Code model</label>
+      <select id="sCcModel">${Object.entries(cur.ern_cc_models || {}).map(([k, v]) =>
+        `<option value="${esc(k)}"${cur.ern_cc_model===k?" selected":""}>${esc(v)}</option>`).join("")}
+      </select></div>
+    <div class="fld"><label for="sAuto">Morning brief</label>
+      <select id="sAuto">
+        <option value="0"${cur.alrt_auto_claude ? "" : " selected"}>written by rules; Claude when I ask</option>
+        <option value="1"${cur.alrt_auto_claude ? " selected" : ""}>Claude writes it every weekday at 06:30</option>
+      </select></div>
+    <p class="dim" style="font-size:.7rem;line-height:1.55;margin:.2rem 0 .6rem">
+      <b>Claude Code</b> writes the earnings reports on <a href="/m/ERN">ERN</a> and the morning brief's
+      narrative on <a href="/m/ALRT">ALRT</a> with your Claude subscription: no charge per write-up, each
+      counts toward your plan's usage. It needs a one-time sign-in, offered on either page. An <b>API key</b>
+      instead bills each one to your Anthropic account. Writing the brief every morning uses your plan
+      every weekday, whether you read it or not.</p>
+    <div class="fld"><label for="sAnt">Anthropic API key</label>
+      <input id="sAnt" type="password" autocomplete="off" spellcheck="false"
+             placeholder="${cur.has_anthropic_key ? "stored: "+esc(cur.anthropic_key_hint||"") : "paste a key (sk-ant-…)"}"></div>
+    <div class="fld"><label for="sModel">API model</label>
+      <select id="sModel">${Object.entries(cur.ern_models || {}).map(([k, v]) =>
+        `<option value="${esc(k)}"${cur.ern_model===k?" selected":""}>${esc(v.label)} — $${v.in}/$${v.out} per million tokens</option>`).join("")}
+      </select></div>
+    <p class="dim" style="font-size:.7rem;line-height:1.55;margin:.2rem 0 .6rem">
+      Only for the API-key writer. Used when you press <b>Write the report</b>; each costs cents
+      (shown next to it) and is kept. Create a key at <b>console.anthropic.com</b>. Stored in your
+      local database; sent only to Anthropic. To remove it, type a single space and save.</p>
+    <div id="sOut"></div>`,
+    `<button class="tbtn" id="sRefresh">Refresh now</button>
+     <button class="tbtn on" id="sSave">Save</button>`);
+  $("#sSave").onclick = async () => {
+    const body = {news_provider: $("#sProv").value};
+    if($("#sKey").value.trim()) body.news_api_key = $("#sKey").value.trim();
+    if($("#sFred").value.trim()) body.fred_api_key = $("#sFred").value.trim();
+    if($("#sAis").value) body.aisstream_api_key = $("#sAis").value.trim();
+    if($("#sAnt").value) body.anthropic_api_key = $("#sAnt").value.trim();
+    if($("#sModel").value) body.ern_model = $("#sModel").value;
+    if($("#sWriter").value) body.ern_writer = $("#sWriter").value;
+    body.ern_cc_model = $("#sCcModel").value;
+    body.alrt_auto_claude = $("#sAuto").value === "1";
+    $("#sOut").innerHTML = `<div class="dim">Saving…</div>`;
+    try{
+      await fetch("/api/pf/settings", {method:"POST",
+        headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+      $("#sOut").innerHTML = `<div class="dim">Saved. Fetching news…</div>`;
+      await fetch("/api/pf/brief/refresh?what=news", {method:"POST"});
+      fetch("/api/pf/market/refresh?what=rates", {method:"POST"}).catch(()=>{});
+      m.close(); load();
+    }catch(e){ $("#sOut").innerHTML = `<div class="note"><b>Failed</b>${esc(e.message)}</div>`; }
+  };
+  $("#sRefresh").onclick = async () => {
+    $("#sOut").innerHTML = `<div class="dim">Refreshing all three sources…</div>`;
+    try{
+      const r = await (await fetch("/api/pf/brief/refresh?what=all", {method:"POST"})).json();
+      $("#sOut").innerHTML = `<div class="dim">${esc(JSON.stringify(r.refreshed))}</div>`;
+      load();
+    }catch(e){ $("#sOut").innerHTML = `<div class="note"><b>Failed</b>${esc(e.message)}</div>`; }
+  };
+}
+
+async function rulesModal(){
+  let d = {rules: [], kinds: []};
+  try{ d = await (await fetch("/api/pf/alerts/rules")).json(); }catch{}
+  const LABEL = {price_below:"price below", price_above:"price above",
+                 move_pct:"moves more than ±%", weight_above:"weight above %",
+                 oil_brent_above:"Brent above $", oil_brent_below:"Brent below $",
+                 oil_wti_above:"WTI above $", oil_wti_below:"WTI below $",
+                 oil_hormuz_above:"Hormuz tankers a day above", oil_hormuz_below:"Hormuz tankers a day below",
+                 oil_nldiesel_above:"Dutch diesel above €/l", oil_nldiesel_below:"Dutch diesel below €/l",
+                 eur_usd_above:"EUR/USD above", eur_usd_below:"EUR/USD below"};
+  const m = modal("Your alert rules", `
+    <p class="dim" style="font-size:.7rem;line-height:1.55;margin:0 0 .6rem">
+      These run alongside the ones the app derives on its own — big moves, margin,
+      concentration, missing prices. Yours catch what you are specifically watching for.
+      The oil conditions (Brent, WTI, Hormuz traffic, Dutch diesel) are easiest to set on
+      <a href="/m/MKT/oil">OIL</a>; here they take any ticker, e.g. BRENT. The EUR/USD ones are set
+      on <a href="/m/EUR">EUR</a>, or here with the ticker EURUSD.</p>
+    <div class="fld"><label for="rTk">Ticker</label>
+      <input id="rTk" placeholder="NVDA" spellcheck="false"></div>
+    <div class="fld"><label for="rKind">Condition</label>
+      <select id="rKind">${(d.kinds||[]).map(k=>`<option value="${k}">${LABEL[k]||k}</option>`).join("")}</select></div>
+    <div class="fld"><label for="rVal">Value</label>
+      <input id="rVal" type="number" step="any" placeholder="150"></div>
+    <div class="fld"><label for="rNote">Note</label>
+      <input id="rNote" placeholder="why you are watching this"></div>
+    <div id="rOut"></div>
+    <div class="grp">Existing</div>
+    <div class="rows" id="rList">${(d.rules||[]).length ? d.rules.map(r=>`<div class="row">
+      <span class="nm"><b class="tkr">${esc(r.ticker||r.isin||"?")}</b>
+        <span class="dim">${esc(LABEL[r.kind]||r.kind)} ${r.value}</span></span>
+      <span class="px dim">${esc(r.note||"")}</span>
+      <span class="ch"><a href="#" data-del="${r.id}" style="color:var(--loss)">delete</a></span>
+    </div>`).join("") : `<div class="dim">None yet.</div>`}</div>`,
+    `<button class="tbtn on" id="rAdd">Add rule</button>`);
+  $("#rAdd").onclick = async () => {
+    const body = {ticker: $("#rTk").value.trim().toUpperCase(), kind: $("#rKind").value,
+                  value: parseFloat($("#rVal").value), note: $("#rNote").value.trim()};
+    if(!body.ticker || isNaN(body.value)){
+      $("#rOut").innerHTML = `<div class="note"><b>Incomplete</b>A rule needs a ticker and a number.</div>`;
+      return;
+    }
+    const r = await fetch("/api/pf/alerts/rules", {method:"POST",
+      headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+    if(!r.ok){ $("#rOut").innerHTML = `<div class="note"><b>Rejected</b>${esc((await r.json()).detail||"")}</div>`; return; }
+    m.close(); rulesModal(); load();
+  };
+  $$("#rList [data-del]").forEach(a => a.onclick = async e => {
+    e.preventDefault();
+    await fetch("/api/pf/alerts/rules/" + a.dataset.del, {method:"DELETE"});
+    m.close(); rulesModal(); load();
+  });
+}
+
+function wireNews(){
+  const rb = $("#ruleBtn");
+  if(rb) rb.onclick = e => { e.preventDefault(); rulesModal(); };
+}
+
+load();
+</script>
+</body>
+</html>

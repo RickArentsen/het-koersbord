@@ -1,0 +1,118 @@
+{
+  "_about": "Hand-entered facts the oil page needs and no feed publishes. Each block says where it came from and when it was entered. The page checks the OPEC block against OPEC's own press releases and says when a newer decision exists.",
+
+  "opec_targets": {
+    "release": "616-4-october-2026",
+    "url": "https://www.opec.org/pr-detail/616-4-october-2026.html",
+    "decided": "2026-10-04",
+    "month": "2026-11",
+    "group": "the seven OPEC+ countries with additional voluntary adjustments",
+    "what": "Required crude production for November 2026, kept at the September 2026 level. OPEC publishes the table as an image; these figures were typed from it.",
+    "kbd": {"DZ": 1007, "IQ": 4431, "KW": 2676, "SA": 10478, "KZ": 1628, "OM": 841, "RU": 9949}
+  },
+
+  "pipelines": {
+    "_about": "Major crude export pipelines. Routes are schematic (a few waypoints, not surveyed lines) and capacities are nameplate figures as reported by the operators and the EIA, rounded. The Hormuz bypasses are the first three.",
+    "lines": [
+      {"k": "EWP", "name": "East-West Pipeline (Petroline)", "country": "SA", "bypass": "Hormuz",
+       "cap": "about 5 mb/d, temporarily up to 7", "from": "Abqaiq", "to": "Yanbu (Red Sea)",
+       "pts": [[49.68, 25.94], [47.6, 25.4], [45.2, 24.8], [42.0, 24.4], [38.06, 24.09]]},
+      {"k": "ADCOP", "name": "Habshan-Fujairah (ADCOP)", "country": "AE", "bypass": "Hormuz",
+       "cap": "about 1.5 mb/d, up to 1.8", "from": "Habshan", "to": "Fujairah (Gulf of Oman)",
+       "pts": [[53.65, 23.83], [54.9, 24.3], [55.9, 24.9], [56.35, 25.12]]},
+      {"k": "GJ", "name": "Goreh-Jask", "country": "IR", "bypass": "Hormuz",
+       "cap": "about 1 mb/d planned, little used", "from": "Goreh", "to": "Jask (Gulf of Oman)",
+       "pts": [[50.52, 29.58], [52.6, 28.4], [55.2, 27.1], [57.77, 25.64]]},
+      {"k": "SUMED", "name": "SUMED", "country": "EG", "bypass": "Suez",
+       "cap": "about 2.5 mb/d", "from": "Ain Sukhna (Red Sea)", "to": "Sidi Kerir (Mediterranean)",
+       "pts": [[32.35, 29.6], [31.3, 30.3], [29.7, 31.1]]},
+      {"k": "KC", "name": "Kirkuk-Ceyhan", "country": "IQ",
+       "cap": "about 1.6 mb/d design", "from": "Kirkuk", "to": "Ceyhan (Mediterranean)",
+       "pts": [[44.39, 35.47], [42.38, 37.07], [40.2, 37.4], [37.4, 37.1], [35.93, 36.88]]},
+      {"k": "BTC", "name": "Baku-Tbilisi-Ceyhan", "country": "AZ",
+       "cap": "about 1.2 mb/d", "from": "Sangachal (Caspian)", "to": "Ceyhan (Mediterranean)",
+       "pts": [[49.47, 40.18], [46.9, 41.0], [44.8, 41.6], [42.6, 41.4], [41.3, 39.9], [38.6, 38.4], [35.93, 36.88]]},
+      {"k": "CPC", "name": "Caspian Pipeline Consortium", "country": "KZ",
+       "cap": "about 1.5 mb/d", "from": "Tengiz", "to": "Novorossiysk (Black Sea)",
+       "pts": [[53.38, 46.15], [51.9, 47.1], [48.0, 46.4], [44.2, 45.4], [40.0, 45.0], [37.77, 44.72]]},
+      {"k": "DRUZHBA", "name": "Druzhba", "country": "RU",
+       "cap": "about 1-2 mb/d, varies by branch", "from": "Almetyevsk", "to": "Central Europe",
+       "pts": [[52.3, 54.9], [50.1, 53.2], [44.0, 53.2], [37.6, 53.3], [34.37, 53.25], [29.25, 52.05], [24.0, 52.2], [21.0, 52.4], [14.28, 53.06]],
+       "branch": [[29.25, 52.05], [25.5, 50.5], [22.3, 48.6], [19.0, 47.9], [17.1, 48.15]]},
+      {"k": "ESPO", "name": "ESPO (Eastern Siberia-Pacific Ocean)", "country": "RU",
+       "cap": "about 1.6 mb/d", "from": "Taishet", "to": "Kozmino (Pacific) and Daqing",
+       "pts": [[98.0, 55.94], [105.0, 56.6], [113.0, 56.0], [119.0, 54.5], [123.94, 53.98], [128.5, 51.0], [131.5, 47.8], [133.0, 42.73]],
+       "branch": [[123.94, 53.98], [124.6, 50.3], [125.0, 46.6]]},
+      {"k": "KCP", "name": "Kazakhstan-China", "country": "KZ",
+       "cap": "about 0.4 mb/d", "from": "Atyrau", "to": "Alashankou (China)",
+       "pts": [[51.9, 47.1], [57.1, 48.6], [65.6, 46.4], [71.64, 48.68], [82.57, 45.17]]},
+      {"k": "KEYSTONE", "name": "Keystone", "country": "CA",
+       "cap": "about 0.6 mb/d", "from": "Hardisty, Alberta", "to": "Cushing and the Gulf Coast",
+       "pts": [[-111.3, 52.67], [-104.0, 49.0], [-97.0, 40.0], [-96.77, 35.98], [-95.4, 32.0], [-93.9, 29.9]]},
+      {"k": "TMX", "name": "Trans Mountain", "country": "CA",
+       "cap": "about 0.9 mb/d", "from": "Edmonton", "to": "Burnaby (Pacific)",
+       "pts": [[-113.5, 53.55], [-118.6, 52.9], [-120.33, 50.67], [-122.95, 49.28]]},
+      {"k": "TAPS", "name": "Trans-Alaska", "country": "US",
+       "cap": "about 2 mb/d capacity, a quarter of it used", "from": "Prudhoe Bay", "to": "Valdez",
+       "pts": [[-148.3, 70.25], [-149.6, 67.4], [-147.7, 64.8], [-145.8, 62.6], [-146.35, 61.13]]}
+    ]
+  },
+
+  "traders": {
+    "_about": "Who moves physical oil. Descriptive only; the page's positioning panel has the numbers for the futures side.",
+    "groups": [
+      {"k": "noc", "name": "National oil companies",
+       "who": "Saudi Aramco, ADNOC, Iraq's SOMO, Kuwait Petroleum, NIOC, Rosneft, Petrobras, PDVSA",
+       "what": "Own most of the world's reserves and sell their crude on term contracts at official selling prices, set monthly against Dubai, Oman, Brent or WTI. Most also run trading arms that buy and sell other people's barrels."},
+      {"k": "majors", "name": "The majors",
+       "who": "Shell, BP, TotalEnergies, ExxonMobil, Chevron",
+       "what": "Produce, refine and trade. Their trading desks move far more oil than the companies produce themselves, and Shell's is the largest among them."},
+      {"k": "houses", "name": "Independent trading houses",
+       "who": "Vitol, Trafigura, Glencore, Gunvor, Mercuria",
+       "what": "Buy cargoes from producers, store, blend and ship them, and sell to refiners. They own or charter tankers, terminals and some refineries, and earn on location, timing and quality differences rather than on the price level."},
+      {"k": "asia", "name": "Asian state buyers",
+       "who": "Unipec (Sinopec), ChinaOil (PetroChina), Indian Oil, Reliance, the Japanese and Korean refiners",
+       "what": "The largest crude importers. China's independent 'teapot' refiners in Shandong are the main buyers of discounted Iranian, Russian and Venezuelan barrels."},
+      {"k": "finance", "name": "Financial traders",
+       "who": "Hedge funds and CTAs (managed money), banks as swap dealers, index funds",
+       "what": "Trade futures, not barrels. The positioning panel shows how many contracts they hold against the producers and merchants who hedge real oil."},
+      {"k": "dark", "name": "The shadow fleet",
+       "who": "Older tankers with opaque ownership, often re-flagged",
+       "what": "Carry sanctioned Russian, Iranian and Venezuelan crude, frequently with AIS switched off or spoofed and with ship-to-ship transfers at sea, so the oil arrives relabelled (Iranian crude reaches China as 'Malaysian')."}
+    ]
+  },
+
+  "equities": {
+    "_about": "Oil and oil-service shares the page follows. Yahoo symbols. 'group' decides the table section.",
+    "list": [
+      ["XOM", "ExxonMobil", "Majors"], ["CVX", "Chevron", "Majors"], ["SHELL.AS", "Shell", "Majors"],
+      ["BP.L", "BP", "Majors"], ["TTE.PA", "TotalEnergies", "Majors"], ["EQNR.OL", "Equinor", "Majors"],
+      ["ENI.MI", "Eni", "Majors"], ["2222.SR", "Saudi Aramco", "Majors"], ["PBR", "Petrobras", "Majors"],
+      ["COP", "ConocoPhillips", "Producers"], ["OXY", "Occidental", "Producers"], ["EOG", "EOG Resources", "Producers"],
+      ["SLB", "SLB", "Services"], ["HAL", "Halliburton", "Services"], ["BKR", "Baker Hughes", "Services"],
+      ["SBMO.AS", "SBM Offshore", "Services"], ["FUR.AS", "Fugro", "Services"],
+      ["VLO", "Valero", "Refiners"], ["MPC", "Marathon Petroleum", "Refiners"], ["PSX", "Phillips 66", "Refiners"],
+      ["FRO", "Frontline", "Tankers"], ["DHT", "DHT Holdings", "Tankers"], ["STNG", "Scorpio Tankers", "Tankers"],
+      ["INSW", "International Seaways", "Tankers"], ["CMBT", "CMB.Tech", "Tankers"],
+      ["KMI", "Kinder Morgan", "Storage & pipelines"], ["VPK.AS", "Vopak", "Storage & pipelines"],
+      ["XLE", "US energy sector (XLE)", "Funds"], ["XOP", "US oil producers (XOP)", "Funds"],
+      ["OIH", "Oil services (OIH)", "Funds"], ["BNO", "Brent fund (BNO)", "Funds"]
+    ]
+  },
+
+  "chokepoints": {
+    "_about": "Notes for the chokepoints IMF PortWatch counts. 'geo' links to the same point on GEO.",
+    "Strait of Hormuz": {"geo": "HORMUZ", "oil": true, "note": "The only sea route out of the Gulf for Saudi, Iraqi, Kuwaiti, Qatari, Emirati and Iranian oil: about a fifth of world oil consumption passed it in 2024 (EIA). Saudi Arabia and the UAE have pipelines around it; nobody else does."},
+    "Bab el-Mandeb Strait": {"geo": "REDSEA", "oil": true, "note": "The southern gate of the Red Sea. Saudi barrels piped to Yanbu leave the Red Sea this way to reach Asia."},
+    "Suez Canal": {"geo": "SUEZ", "oil": true, "note": "With the SUMED pipeline beside it, the link between the Gulf and Europe."},
+    "Malacca Strait": {"geo": "MALACCA", "oil": true, "note": "Most Gulf and African crude bound for China, Japan and Korea; the busiest oil chokepoint by volume."},
+    "Cape of Good Hope": {"oil": true, "note": "The long way round Africa when the Red Sea is unsafe; more traffic here usually means less at Bab el-Mandeb."},
+    "Bosporus Strait": {"geo": "BOSPORUS", "oil": true, "note": "Russian and Kazakh (CPC) crude from Novorossiysk to the Mediterranean."},
+    "Oresund Strait": {"oil": true, "note": "With the Great Belt, the Baltic's exit: Russian crude and products from Primorsk and Ust-Luga."},
+    "Dover Strait": {"oil": true, "note": "The English Channel: Baltic and Russian flows heading south, North Sea and Rotterdam traffic."},
+    "Gibraltar Strait": {"oil": true, "note": "Between the Atlantic and the Mediterranean."},
+    "Panama Canal": {"geo": "PANAMA", "oil": true, "note": "US Gulf Coast products and LPG to Asia and the Pacific coast of Latin America."},
+    "Taiwan Strait": {"geo": "TAIWAN", "note": "Mostly containers; tankers here are largely in the China-Korea-Japan coastal trade."},
+    "Kerch Strait": {"note": "Between the Sea of Azov and the Black Sea; Russian product exports."}
+  }
+}

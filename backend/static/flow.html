@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FLOW · Het Koersbord</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305080A'/%3E%3Cpath d='M5 23 L12 15 L17 19 L27 7' stroke='%234FA8CE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/term.css">
+<link rel="stylesheet" href="/kit.css">
+<style>
+.fhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:.4rem 1rem;}
+.fhead h1{font-size:1.15rem;letter-spacing:.04em;margin:0;font-weight:600;}
+.fhead .sp{flex:1;}
+.ins{display:flex;flex-direction:column;gap:.1rem;}
+.ins .fd{display:grid;grid-template-columns:16px 1fr;gap:.45rem;font-family:var(--f-ui);font-size:.82rem;line-height:1.45;padding:.28rem 0;border-bottom:1px dotted var(--rule);}
+.ins .fd:last-child{border-bottom:0;}
+.ins .fd i{font-style:normal;font-family:var(--f-mono);text-align:center;}
+.fd.good i{color:var(--gain);} .fd.warn i{color:var(--warn);} .fd.bad i{color:var(--loss);} .fd.info i{color:var(--ink-soft);}
+.expl{font-family:var(--f-ui);font-size:.78rem;color:var(--ink-mid);line-height:1.55;margin:.4rem 0 .6rem;max-width:64rem;}
+.expl b{color:var(--ink);font-weight:500;}
+.ctitle{font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:.6rem 0 .25rem;}
+#s-top .tiles{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
+.kind{font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;padding:0 .3rem;border:1px solid var(--rule-strong);white-space:nowrap;}
+.kind.d90{color:var(--loss);border-color:var(--loss);} .kind.u90{color:var(--gain);border-color:var(--gain);}
+.kind.d80{color:var(--loss);} .kind.u80{color:var(--gain);}
+.ixsw{display:inline-flex;gap:0;}
+.ixsw button{background:var(--ground);border:1px solid var(--rule-strong);color:var(--ink-mid);font-family:var(--f-mono);font-size:.7rem;padding:.2rem .6rem;margin-left:-1px;cursor:pointer;}
+.ixsw button.on{background:var(--accent-dim);border-color:var(--accent);color:var(--ink);}
+.job{border:1px solid var(--accent-dim);background:rgba(79,168,206,.06);padding:.45rem .7rem;font-size:.72rem;margin:.4rem 0;}
+.tbl tr.pick{cursor:pointer;}
+.tbl tr.pick:hover td{background:var(--sunk);}
+.tbl tr.on td{background:rgba(79,168,206,.08);}
+.tbl td.l{text-align:left;}
+.press a{display:block;font-family:var(--f-ui);font-size:.78rem;padding:.25rem 0;border-bottom:1px dotted var(--rule);color:var(--ink);}
+.press a .dim{font-size:.64rem;margin-left:.35rem;}
+.holders{font-family:var(--f-ui);font-size:.7rem;color:var(--ink-mid);line-height:1.5;padding:.3rem 0 .5rem;}
+.live{font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent-dim);padding:0 .25rem;}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;}
+@media(max-width:1000px){.grid3{grid-template-columns:minmax(0,1fr);}}
+.srcrow td{font-family:var(--f-ui);font-size:.72rem;}
+</style>
+</head>
+<body>
+<div id="shell"></div>
+<div class="wrap" id="app"><div class="center">Loading<span class="blink">_</span></div></div>
+<script src="/term.js"></script>
+<script src="/kit.js"></script>
+<script src="/flow.js"></script>
+</body>
+</html>

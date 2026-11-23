@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MKT · Het Koersbord</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305080A'/%3E%3Cpath d='M5 23 L12 15 L17 19 L27 7' stroke='%234FA8CE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="/term.css">
+<style>
+/* the board: one dense grid, not a table, so rows can carry a chart */
+/* The sparkline SVG is 90px wide, so its column must be at least that or the
+   chart spills over the note beside it. */
+.mrow{display:grid;grid-template-columns:150px 92px 74px 56px 56px 62px 72px 94px 1fr;
+      gap:.5rem;align-items:center;padding:.22rem 0;border-bottom:1px dotted var(--rule);
+      font-size:.74rem;}
+.mrow.head{border-bottom:1px solid var(--rule-strong);color:var(--ink-soft);
+      font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;padding-bottom:.3rem;}
+.mrow:last-child{border-bottom:0;}
+.mrow .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mrow .num{text-align:right;}
+.mrow .lvl{text-align:right;font-weight:600;color:var(--ink);}
+.rng{position:relative;height:6px;background:var(--sunk);}
+.rng i{position:absolute;top:-2px;width:2px;height:10px;background:var(--accent);}
+.rng u{position:absolute;top:0;height:100%;background:var(--rule-strong);left:0;right:0;}
+.spark{display:block;}
+.mnote{font-size:.64rem;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.live-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--gain);
+      margin-right:.3rem;vertical-align:middle;}
+.src{font-size:.54rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);
+     border:1px solid var(--rule);padding:0 .22rem;}
+@media(max-width:1100px){
+  .mrow{grid-template-columns:minmax(0,1fr) 84px 60px 52px 52px;}
+  .mrow .h5,.mrow .h6,.mrow .h7,.mrow .h8,.mrow .c5,.mrow .c6,.mrow .c7,.mrow .c8{display:none;}
+}
+@media(max-width:620px){
+  /* Three columns on a phone: what it is, where it is, what it did today.
+     Everything else needs width it does not have. */
+  .mrow{grid-template-columns:minmax(0,1fr) 74px 58px;gap:.4rem;}
+  .mrow .h3,.mrow .h4,.mrow .c3,.mrow .c4{display:none;}
+}
+/* sessions */
+.sess{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--rule);}
+@media(max-width:820px){.sess{grid-template-columns:repeat(3,1fr);}}
+.ses{background:var(--surface);padding:.4rem .5rem;display:flex;flex-direction:column;gap:.1rem;}
+.ses.on{background:#0D161B;box-shadow:inset 2px 0 0 var(--gain);}
+.ses .c{font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);}
+.ses.on .c{color:var(--gain);}
+.ses .t{font-size:.92rem;font-weight:600;}
+.ses .n{font-size:.62rem;color:var(--ink-soft);}
+/* the read */
+.sigs{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:.35rem;}
+.sig{font-size:.68rem;color:var(--ink-soft);}
+.sig b{color:var(--ink);font-weight:500;}
+.rd-top{display:flex;flex-wrap:wrap;gap:.5rem 1.6rem;align-items:baseline;}
+.rd-v{font-size:1.25rem;font-weight:600;}
+.rd-sub{font-size:.68rem;color:var(--ink-soft);}
+.rd-hz{display:flex;flex-wrap:wrap;gap:.4rem 1rem;font-size:.66rem;color:var(--ink-soft);}
+.rd-hz b{font-weight:600;}
+.rd-story{font-family:var(--f-ui);font-size:.78rem;line-height:1.6;color:var(--ink);margin:.6rem 0 0;padding:0 0 0 1rem;max-width:120ch;}
+.rd-story li{margin:.12rem 0;}
+.rd-flags{margin:.55rem 0 0;padding:0;list-style:none;font-size:.7rem;}
+.rd-flags li{border-left:2px solid var(--warn);padding:.15rem .55rem;margin:.25rem 0;}
+.rd-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--rule);margin-top:.7rem;border:1px solid var(--rule);}
+@media(max-width:1200px){.rd-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:760px){.rd-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:520px){.rd-grid{grid-template-columns:minmax(0,1fr);}}
+.rd-g,.rd-c{background:var(--surface);padding:.45rem .55rem;min-width:0;}
+.rd-g h3,.rd-c h3{font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 .3rem;
+  font-weight:500;display:flex;justify-content:space-between;gap:.4rem;}
+.rd-g h3 b{letter-spacing:0;font-weight:600;}
+.rd-g .gn{font-size:.6rem;color:var(--ink-soft);margin:-.15rem 0 .3rem;}
+.rd-s{display:grid;grid-template-columns:minmax(0,1fr) 52px 58px;gap:.35rem;align-items:center;font-size:.68rem;padding:.12rem 0;}
+.rd-s .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rd-s .m{text-align:right;font-variant-numeric:tabular-nums;}
+.rd-s.lag{opacity:.55;}
+.rd-s .lv{grid-column:1 / -1;font-size:.58rem;color:var(--ink-soft);margin-top:-.1rem;}
+.zb{position:relative;height:8px;background:var(--sunk);}
+.zb::after{content:"";position:absolute;left:50%;top:-1px;width:1px;height:10px;background:var(--rule-strong);}
+.zb i{position:absolute;top:1px;height:6px;}
+.rd-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-top:0;}
+@media(max-width:900px){.rd-row{grid-template-columns:minmax(0,1fr);}}
+.rd-c{font-size:.68rem;line-height:1.55;}
+.rd-c table{border-collapse:collapse;width:100%;font-size:.66rem;}
+.rd-c td,.rd-c th{padding:.1rem .2rem;text-align:right;font-variant-numeric:tabular-nums;}
+.rd-c th{font-weight:500;color:var(--ink-soft);font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;}
+.rd-c td:first-child,.rd-c th:first-child{text-align:left;}
+.rd-hist{display:block;width:100%;height:40px;margin-top:.25rem;}
+.rd-foot{font-size:.66rem;color:var(--ink-soft);margin-top:.55rem;line-height:1.6;}
+/* correlation grid */
+.cg{border-collapse:collapse;font-size:.64rem;}
+.cg th{padding:.16rem .3rem;color:var(--ink-soft);font-weight:500;font-size:.58rem;
+       letter-spacing:.06em;text-transform:uppercase;text-align:right;white-space:nowrap;}
+.cg th.l{text-align:left;}
+.cg td{padding:.16rem .3rem;text-align:center;min-width:30px;
+       font-variant-numeric:tabular-nums;}
+.cg tr.you th,.cg td.you{color:var(--accent);font-weight:600;}
+.cgwrap{overflow-x:auto;}
+/* MKT sub-pages: the overview and the bond market */
+.mtabs{display:flex;gap:0;border-bottom:1px solid var(--rule-strong);margin-bottom:.7rem;}
+.mtabs a{padding:.4rem .9rem;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);border-bottom:2px solid transparent;margin-bottom:-1px;}
+.mtabs a:hover{color:var(--ink);text-decoration:none;}
+.mtabs a.on{color:var(--ink);border-bottom-color:var(--accent);}
+</style>
+</head>
+<body>
+<div id="shell"></div>
+<div class="wrap" id="app"><div class="center">Loading<span class="blink">_</span></div></div>
+
+<script src="/term.js"></script>
+<script>
+/* ==========================================================================
+   MKT — the market snapshot.
+
+   The board arrives from /api/pf/market/board, built by the background
+   thread. Rows whose symbols Yahoo actually pushes are then updated live off
+   the same SSE stream PORT uses; the rest are stamped with how fresh they
+   are. Every row says which it is, because a delayed price and a live one
+   look identical until you say so.
+   ========================================================================== */
+
+$("#shell").innerHTML = termBar({
+  here: "MKT",
+  right: `<span class="live shut" id="liveDot" title="Live price feed"><i></i><span id="liveTxt">offline</span></span>
+          <button class="tbtn" id="refBtn">Refresh</button>
+          <button class="tbtn on" id="reloadBtn">Reload</button>`
+});
+wireShell();
+$("#reloadBtn").onclick = () => load();
+$("#refBtn").onclick = async () => {
+  const b = $("#refBtn"); b.textContent = "Fetching…"; b.disabled = true;
+  try{ await fetch("/api/pf/market/refresh?what=all", {method:"POST"}); }catch{}
+  b.textContent = "Refresh"; b.disabled = false; load();
+};
+
+let DATA = null, ES = null, PREV = {}, RETRY = 0, TIMER = null, POLL = null;
+
+async function load(){
+  try{
+    const r = await fetch("/api/pf/market/board");
+    if(!r.ok) throw new Error(r.status);
+    DATA = await r.json();
+  }catch(e){ DATA = {error: String(e.message || e), rows: []}; }
+  render();
+  liveStart();
+  clearInterval(POLL);
+  // The non-streaming rows — daily series and delayed quotes — are refreshed
+  // on a timer. A minute is honest: most of this board is 15 minutes delayed
+  // at source anyway, and the rate series only change once a day.
+  POLL = setInterval(async () => {
+    if(document.hidden) return;
+    try{
+      const r = await fetch("/api/pf/market/board");
+      if(r.ok){ DATA = await r.json(); render(); }
+    }catch{}
+  }, 60000);
+}
+
+/* ---------- formatting ---------- */
+const lvl = r => {
+  if(r.last == null) return "–";
+  if(r.u === "fx")  return r.last.toFixed(4);
+  if(r.u === "pct") return r.last.toFixed(2) + "%";
+  if(r.u === "usd") return "$" + nf(r.last, 2);
+  if(r.u === "eur") return "€" + nf(r.last, 2);
+  return nf(r.last, 2);
+};
+/* A yield moving 4.00 -> 4.10 is +10bp. Calling that "+2.5%" is arithmetically
+   true and tells you nothing about the bond market. */
+const isRate = r => r.u === "pct";
+const chg = (r, k) => {
+  if(isRate(r)){
+    const v = r[k.replace("_pct","_abs")];
+    return v == null ? "–" : (v >= 0 ? "+" : "") + Math.round(v * 100) + "bp";
+  }
+  return r[k] == null ? "–" : pct(r[k], 1);
+};
+const chgSign = (r, k) => sgn(isRate(r) ? r[k.replace("_pct","_abs")] : r[k]);
+
+function spark(vals, up){
+  if(!vals || vals.length < 2) return "";
+  const w = 90, h = 18, lo = Math.min(...vals), hi = Math.max(...vals);
+  const rng = (hi - lo) || 1;
+  const pts = vals.map((v, i) =>
+    `${(i/(vals.length-1)*w).toFixed(1)},${(h - (v-lo)/rng*h).toFixed(1)}`).join(" ");
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"
+    aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(${
+    up ? "--gain" : "--loss"})" stroke-width="1.2"/></svg>`;
+}
+
+function rangeBar(r){
+  if(r.range_pos == null) return "";
+  return `<div class="rng" title="52-week range ${lvl({...r,last:r.lo52})} to ${lvl({...r,last:r.hi52})}">
+    <u></u><i style="left:calc(${Math.max(0,Math.min(100,r.range_pos))}% - 1px)"></i></div>`;
+}
+
+/* ---------- render ---------- */
+function render(){
+  if(!DATA){ return; }
+  if(DATA.error && !(DATA.rows||[]).length){
+    $("#app").innerHTML = `${MTABS}<div class="panel"><div class="body"><div class="note">
+      <b>The board is not built yet</b>${esc(DATA.error)}<br>
+      It is assembled by a background thread a few seconds after the app starts.
+      Press Refresh, or Reload in a moment.</div></div></div>`;
+    return;
+  }
+  const rows = DATA.rows || [];
+  $("#app").innerHTML = `
+    ${MTABS}
+    ${sessionBar()}
+    ${riskPanel()}
+    ${youPanel()}
+    ${(DATA.groups||[]).map(g => groupPanel(g, rows.filter(r => r.g === g))).join("")}
+    ${corrPanel()}
+    ${diagPanel()}`;
+  const st = $("#selfTest");
+  if(st) st.onclick = async e => {
+    e.preventDefault();
+    $("#stOut").innerHTML = `<div class="dim">Calling every source<span class="blink">_</span></div>`;
+    try{
+      const r = await (await fetch("/api/pf/diagnostics")).json();
+      const cl = r.client || {};
+      $("#stOut").innerHTML = `
+        ${cl.ca ? `<div class="dim" style="font-size:.64rem;margin-top:.4rem">
+          HTTP client — CA bundle ${esc(cl.ca)} · curl_cffi ${esc(cl.curl_cffi||"?")}
+          · requests ${esc(cl.requests||"?")}</div>` : ""}
+        <div class="rows" style="margin-top:.3rem">${
+        r.checks.map(c => `<div class="row" style="align-items:flex-start">
+          <span class="nm">${esc(c.note||"")}${
+            c.transport ? ` <span class="src">${esc(c.transport)}</span>` : ""}</span>
+          <span class="px ${c.ok?"pos":(c.ok===null?"dim":"neg")}">${
+            c.ok===null?"skipped":(c.ok?("ok "+(c.status||"")):("failed "+(c.status||"")))}</span>
+          <span class="ch dim" style="min-width:0;text-align:right;max-width:52ch;
+            white-space:normal" title="${esc(c.url||"")}">${esc(c.error||c.first||"")}${
+            /* Every URL and symbol that was tried, not just the last error —
+               this is the difference between "it failed" and knowing which
+               spelling to change. */
+            (c.tried||[]).length ? `<br><span style="font-size:.6rem;opacity:.75">${
+              esc(c.tried.join(" · "))}</span>` : ""}</span>
+        </div>`).join("")}</div>`;
+    }catch(e){ $("#stOut").innerHTML = `<div class="note"><b>Self-test failed</b>${esc(e.message)}</div>`; }
+  };
+}
+
+function sessionBar(){
+  const s = DATA.sessions || [];
+  return `<div class="panel">
+    <header><h2>Sessions</h2>
+      <span class="hint">regular hours — public holidays are not modelled</span></header>
+    <div class="sess">${s.map(x => `<div class="ses ${x.open?"on":""}">
+      <span class="c">${esc(x.n)}</span>
+      <span class="t">${esc(x.local)}</span>
+      <span class="n">${x.open?"open · ":""}${esc(x.next)} in ${esc(x.in_txt)}</span>
+    </div>`).join("")}</div></div>`;
+}
+
+/* The read: the verdict and its horizons, the story in sentences, the five
+   groups with every signal measured against its own normal day, then rates,
+   leadership and the book, sixty sessions of the score, and the day's story
+   from READ. Everything is computed on the server (market.risk_read). */
+const tone = c => c == null ? "dim" : c >= .35 ? "pos" : c <= -.35 ? "neg" : "warnc";
+const zf = z => z == null ? "–" : (z >= 0 ? "+" : "") + z.toFixed(2);
+const mv = s => s.unit === "bp" ? `${s.move >= 0 ? "+" : ""}${Math.round(s.move)}bp` : pct(s.move, 1);
+const dd = d => d ? `${d.slice(8,10)}/${d.slice(5,7)}` : "";
+
+function zbar(z){
+  if(z == null) return `<div class="zb"></div>`;
+  const w = Math.min(3, Math.abs(z)) / 3 * 50;
+  const pos = z >= 0 ? `left:50%` : `left:${50 - w}%`;
+  return `<div class="zb" title="${zf(z)} normal days, in the risk-on direction"><i style="${pos};width:${w}%;background:var(${z >= 0 ? "--gain" : "--loss"})"></i></div>`;
+}
+
+function lvl2(s){
+  if(s.level == null) return "";
+  const l = s.u === "pct" ? s.level.toFixed(2) + "%" : s.u === "fx" ? s.level.toFixed(4)
+          : s.u === "usd" ? "$" + nf(s.level, 2) : nf(s.level, s.level >= 1000 ? 0 : 2);
+  return `${l}${s.pctile != null ? ` · ${s.pctile}th pctile` : ""}${s.lag ? ` · ${esc(s.src || "")} ${dd(s.asof)}, not in today's score` : ""}`;
+}
+
+function histSvg(H){
+  if(!H || H.length < 5) return "";
+  const W = H.length * 6, mid = 20, k = 18 / 3;
+  const bars = H.map((x, i) => {
+    const h = Math.max(1, Math.min(3, Math.abs(x.c)) * k);
+    const y = x.c >= 0 ? mid - h : mid;
+    return `<rect x="${i * 6}" y="${y.toFixed(1)}" width="5" height="${h.toFixed(1)}" fill="var(${x.c >= .35 ? "--gain" : x.c <= -.35 ? "--loss" : "--ink-soft"})"><title>${dmy(x.d)}: ${zf(x.c)}</title></rect>`;
+  }).join("");
+  return `<svg class="rd-hist" viewBox="0 0 ${W} 40" preserveAspectRatio="none" aria-label="the read over the last ${H.length} sessions">
+    <line x1="0" x2="${W}" y1="${mid}" y2="${mid}" stroke="var(--rule-strong)" stroke-width=".5"/>${bars}</svg>`;
+}
+
+function riskPanel(){
+  const R = DATA.risk;
+  if(!R || !R.signals || !R.signals.length) return "";
+  const hz = R.horizons || [];
+  const st = R.stress || {};
+  const rt = R.rates || {};
+  const B = R.book;
+  const cov = R.coverage || {};
+  const shape = s => s ? `${esc(s.kind)}${s.gloss ? `: ${esc(s.gloss)}` : ""}` : "–";
+  const pts = v => v == null ? "–" : `<span class="${sgn(v)}">${v >= 0 ? "+" : ""}${v.toFixed(2)}</span>`;
+  const bp = v => v == null ? "–" : `<span class="${sgn(v)}">${v >= 0 ? "+" : ""}${Math.round(v)}bp</span>`;
+
+  // a payload from before the extended read had only verdict, score and signals
+  if(!hz.length) return `<div class="panel"><header><h2>The read</h2><span class="hint">${esc(R.note||"")}</span></header>
+    <div class="body"><span class="rd-v ${esc(R.tone)}">${esc(R.verdict)}</span></div></div>`;
+
+  const groups = (R.groups || []).map(g => `<div class="rd-g">
+      <h3><span>${esc(g.group)}</span><b class="${tone(g.z)}">${g.z == null ? "not scored today" : zf(g.z)}</b></h3>
+      <div class="gn">${esc(g.note || "")}</div>
+      ${g.signals.map(s => `<div class="rd-s${s.lag ? " lag" : ""}" title="normal day ${s.unit === "bp" ? Math.round(s.sd) + "bp" : s.sd + "%"} · ${zf(s.raw_z)} of them">
+        <span class="n">${esc(s.label)}</span><span class="m ${s.dir > 0 ? "pos" : s.dir < 0 ? "neg" : ""}">${mv(s)}</span>${zbar(s.z)}
+        <span class="lv">${lvl2(s)}</span></div>`).join("")}
+    </div>`).join("");
+
+  const lead = (R.leaders || []).map(x => `<tr><td title="${esc(x.up)} when positive">${esc(x.label)}</td>
+      <td>${pts(x.d)}</td><td>${pts(x.w)}</td><td>${pts(x.m)}</td></tr>`).join("");
+
+  const book = B ? `<div>Prices: the S&amp;P 500 ${pct(B.spx, 2)} × your beta ${B.beta.toFixed(2)} ≈ <b class="${sgn(B.price)}">${pct(B.price, 2)}</b></div>
+      ${B.fx != null ? `<div>Currency: ${Math.round(B.usd_pct)}% in dollars, EUR/USD ${pct(B.eurusd, 2)} ≈ <b class="${sgn(B.fx)}">${pct(B.fx, 2)}</b></div>` : ""}
+      <div>Together ≈ <b class="${sgn(B.total)}">${pct(B.total, 2)}</b> for the book</div>
+      ${B.tech_pct ? `<div class="dim">Technology is ${Math.round(B.tech_pct)}% of the book; the tech row under Leadership is the tilt.</div>` : ""}
+      <div class="dim">An estimate from beta. <a href="/portfolio">PORT</a> has the real day change.</div>`
+    : `<div class="dim">The book's beta is not measured yet.</div>`;
+
+  const sessionTxt = R.session ? `${new Date(R.session + "T12:00:00").toLocaleDateString("en-GB", {weekday: "short"})} ${dd(R.session)}` : "";
+  const hzTxt = hz.map(h => `<span>${h.h === "1D" ? "Session" : h.h === "1W" ? "Week" : "Month"} <b class="${esc(h.tone)}">${esc(h.verdict)}</b> <span class="dim">${zf(h.composite)}</span></span>`).join("");
+
+  return `<div class="panel" id="read">
+    <header><h2>The read</h2><span class="hint">${esc(R.note || "")}</span></header>
+    <div class="body">
+      <div class="rd-top">
+        <div><span class="rd-v ${esc(R.tone)}">${esc(R.verdict)}</span>
+          <span class="rd-sub"> ${esc(R.strength || "")} · ${zf(R.composite)} normal days · ${R.agree} of ${R.of} groups agree${sessionTxt ? ` · ${esc(sessionTxt)}` : ""}</span></div>
+        <div class="rd-hz">${hzTxt}</div>
+        ${st.label ? `<div class="rd-hz"><span>Stress <b class="${st.pctile >= 85 ? "neg" : st.pctile >= 60 ? "warnc" : "pos"}">${esc(st.label)}</b>
+          <span class="dim">${st.pctile}th pctile across ${(st.parts||[]).length} gauges</span></span></div>` : ""}
+      </div>
+      <ul class="rd-story">${(R.story || []).map(s => `<li>${esc(s)}</li>`).join("")}</ul>
+      ${(R.flags || []).length ? `<ul class="rd-flags">${R.flags.map(f => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}
+      <div class="rd-grid">${groups}</div>
+      <div class="rd-row">
+        <div class="rd-c"><h3><span>Rates</span><span>FRED ${esc(dd(rt.asof))}</span></h3>
+          <div>US 10-year ${rt.us10 != null ? rt.us10.toFixed(2) + "%" : "–"} ${bp(rt.d10)} · 2-year ${rt.us2 != null ? rt.us2.toFixed(2) + "%" : "–"} ${bp(rt.d2)}</div>
+          <div>Session: ${shape(rt.day)}</div>
+          <div>Week (${bp(rt.w2)} / ${bp(rt.w10)}): ${shape(rt.week)}</div>
+          <div>Real 10-year ${bp(rt.real)} · breakeven ${bp(rt.be)}</div>
+          <div>US − euro 10-year gap ${bp(rt.gap)}, week ${bp(rt.gap_w)} <span class="dim">· a wider gap usually helps the dollar</span></div>
+        </div>
+        <div class="rd-c"><h3><span>Leadership</span><span>points</span></h3>
+          <table><thead><tr><th></th><th>Session</th><th>Week</th><th>Month</th></tr></thead><tbody>${lead}</tbody></table>
+        </div>
+        <div class="rd-c"><h3><span>For your book</span><a class="code" href="/portfolio">PORT &rsaquo;</a></h3>${book}</div>
+      </div>
+      ${(R.history || []).length >= 5 ? `<div class="rd-foot">The read over the last ${R.history.length} sessions
+        <span class="dim">(bars above the line risk-on; ${R.run.off} of the last ${R.run.n} risk-off, ${R.run.on} risk-on)</span>
+        ${histSvg(R.history)}</div>` : ""}
+      ${cov.main || cov.article ? `<div class="rd-foot">${cov.main ? `${esc(cov.label || "Live coverage")}:
+          <a href="${esc(cov.main.url)}" target="_blank" rel="noopener">${esc(cov.main.title)}</a> <span class="dim">${esc(cov.main.source || "")}</span>` : ""}
+        ${cov.article ? `${cov.main ? "<br>" : ""}READ today: <a href="/m/READ#a=${cov.article.id}">${esc(cov.article.headline)}</a>` : ""}</div>` : ""}
+      <div class="rd-foot dim">How it works: each move is divided by that instrument's normal day (a year of daily moves),
+        so a 3% day in the VIX counts like a third of a 3% day in the S&amp;P 500. A group is the mean of its signals, the
+        verdict the mean of the groups, so four equity indices cannot outvote credit. Beyond ±0.35 it calls risk-on or
+        risk-off. FRED's spreads arrive a session late; they are shown dated and left out of the session's score.</div>
+    </div></div>`;
+}
+
+function youPanel(){
+  const Y = DATA.you;
+  if(!Y) return "";
+  const row = (a,b) => `<span class="sig">${a} <b>${b}</b></span>`;
+  return `<div class="panel">
+    <header><h2>What this board means for your book</h2>
+      <a class="code" href="/portfolio">PORT &rsaquo;</a></header>
+    <div class="body"><div class="sigs" style="margin-top:0">
+      ${Y.beta!=null ? row("Beta to "+esc(Y.benchmark||"the index"), Y.beta.toFixed(2)) : ""}
+      ${Y.r2!=null ? row("R²", (Y.r2*100).toFixed(0)+"%") : ""}
+      ${Y.vol_pct!=null ? row("Your volatility", Y.vol_pct.toFixed(0)+"%") : ""}
+      ${Y.usd_pct ? row("Dollar exposure", Y.usd_pct.toFixed(0)+"% of the book") : ""}
+      ${Y.tech_pct ? row("Technology", Y.tech_pct.toFixed(0)+"%") : ""}
+      ${Y.energy_pct ? row("Energy", Y.energy_pct.toFixed(0)+"%") : ""}
+      ${Y.day_fx_eur!=null ? row("Currency did to you today",
+        `<span class="${sgn(Y.day_fx_eur)}">${eur(Y.day_fx_eur,0)}</span>`) : ""}
+      ${Y.cash_eur!=null && Y.cash_eur < 0 ? row("On margin",
+        `<span class="neg">${eur(Y.cash_eur,0)}</span>`) : ""}
+    </div>
+    <p class="dim" style="font-size:.68rem;line-height:1.5;margin:.5rem 0 0">
+      Beta and R² are measured on your holdings line against the index that
+      actually explains it. Dollar exposure is why the EUR/USD row below is not
+      a spectator sport.</p>
+    </div></div>`;
+}
+
+const MTABS = `<nav class="mtabs"><a class="on" href="/m/MKT">Overview</a><a href="/m/MKT/bonds">Bonds &amp; rates</a><a href="/m/MKT/oil">Oil</a></nav>`;
+
+function groupPanel(g, rows){
+  if(!rows.length) return "";
+  return `<div class="panel">
+    <header><h2>${esc(g)}</h2>
+      <span class="hint">${rows.filter(r=>r.streaming).length} streaming ·
+        ${rows.filter(r=>r.src!=="yahoo").length} daily series</span>${
+      g === "Rates" ? `<a class="code" href="/m/MKT/bonds" title="The whole curve, inflation, Europe, and what bonds would do to your book">BONDS &rsaquo;</a>` : ""}</header>
+    <div class="body">
+      <div class="mrow head">
+        <span>Instrument</span><span class="num">Level</span><span class="num">1D</span>
+        <span class="num h3">1W</span><span class="num h4">1M</span><span class="num h5">YTD</span>
+        <span class="h6">52w range</span><span class="h7">30 days</span><span class="h8">&nbsp;</span>
+      </div>
+      ${rows.map(r => `<div class="mrow">
+        <span class="nm" title="${esc(r.n)}">${r.streaming?'<i class="live-dot"></i>':""}${esc(r.n)}</span>
+        <span class="lvl">${lvl(r)}</span>
+        <span class="num ${chgSign(r,"d_pct")}">${chg(r,"d_pct")}</span>
+        <span class="num c3 ${chgSign(r,"w_pct")}">${chg(r,"w_pct")}</span>
+        <span class="num c4 ${chgSign(r,"m_pct")}">${chg(r,"m_pct")}</span>
+        <span class="num c5 ${chgSign(r,"y_pct")}">${chg(r,"y_pct")}</span>
+        <span class="c6">${rangeBar(r)}</span>
+        <span class="c7">${spark(r.spark, (r.m_pct ?? r.d_pct ?? 0) >= 0)}</span>
+        <span class="mnote c8">${r.pctile!=null
+          ? `<b class="${r.pctile>80?"warnc":(r.pctile<20?"dim":"")}">${r.pctile}th pctile</b> of the year`
+          : esc(r.note || "")}${
+          r.src!=="yahoo" ? ` <span class="src">${esc(r.src)}${r.asof?" "+dmy(r.asof).slice(0,5):""}</span>` : ""}</span>
+      </div>`).join("")}
+    </div></div>`;
+}
+
+function corrPanel(){
+  const C = DATA.correlations;
+  if(!C) return "";
+  if(!C.keys || C.keys.length < 3)
+    return `<div class="panel"><header><h2>Cross-asset correlation</h2></header>
+      <div class="body"><div class="note"><b>Not enough history yet</b>
+      ${esc(C.why || "waiting for daily closes to accumulate")}.
+      It needs two or more series with at least 30 days cached; press Refresh
+      once the board has been up for a while.</div></div></div>`;
+  const cell = v => {
+    if(v == null) return `<td class="dim">–</td>`;
+    const a = Math.min(1, Math.abs(v));
+    const c = v >= 0 ? "63,179,128" : "224,100,79";
+    return `<td style="background:rgba(${c},${(a*0.45).toFixed(2)})">${v.toFixed(2)}</td>`;
+  };
+  return `<div class="panel">
+    <header><h2>Cross-asset correlation</h2>
+      <span class="hint">${C.window}-day daily returns · ${C.n} observations ·
+        YOU is your portfolio</span></header>
+    <div class="body cgwrap"><table class="cg">
+      <thead><tr><th class="l"></th>${C.keys.map(k=>`<th>${esc(k)}</th>`).join("")}</tr></thead>
+      <tbody>${C.keys.map((a,i)=>`<tr class="${a==="YOU"?"you":""}">
+        <th class="l" title="${esc((C.labels||{})[a]||a)}">${esc(a)}</th>
+        ${C.matrix[i].map((v,j)=>cell(v)).join("")}</tr>`).join("")}</tbody>
+    </table>
+    <p class="dim" style="font-size:.68rem;line-height:1.5;margin:.6rem 0 0">
+      Ten asset classes rather than fifty shares, because this is readable and a
+      50×50 grid is 1,225 numbers that change no decision. The row worth watching
+      is YOU: when its correlations all drift toward +1 together, diversification
+      has stopped working.</p>
+    </div></div>`;
+}
+
+/* The streamer's state as of the last tick. The Sources panel used to read it
+   from the board payload, which is fetched BEFORE this page opens its
+   EventSource — so for the first minute after every load it reported the feed
+   as "off · nobody is watching" while the dot in the top bar said live. Same
+   fact, two ages. The live tick is now the authority and the row repaints
+   itself. */
+let LIVE = null;
+
+function streamState(){
+  const s = LIVE || (DATA.sources || {}).stream || {};
+  const state = s.state || "off";
+  return {
+    state,
+    /* Three states, not two. Streaming and polling are both WORKING — polling
+       is the designed fallback. "off" is idle, which is not a failure either;
+       only an error state is. */
+    cls: ["streaming", "polling"].includes(state) ? "pos" : state === "off" ? "dim" : "warnc",
+    word: state === "streaming" ? "live" : state === "polling" ? "polling"
+        : state === "off" ? "idle" : state,
+    detail: `${state}${s.detail ? " · " + s.detail : ""}${
+              s.symbols ? ` · ${s.symbols} symbols` : ""}`,
+  };
+}
+
+function streamRowHTML(){
+  const st = streamState();
+  return `<span class="nm">Live stream</span>
+    <span class="px ${st.cls}">${esc(st.word)}</span>
+    <span class="ch dim" style="min-width:0;text-align:right">${esc(st.detail)}</span>`;
+}
+
+function paintStreamRow(){
+  const el = $("#srcStream");
+  if(el) el.innerHTML = streamRowHTML();
+  const note = $("#srcStreamNote");
+  if(note) note.style.display = streamState().state === "off" ? "" : "none";
+}
+
+function diagPanel(){
+  const S = DATA.sources || {};
+  const line = (name, ok, detail) => `<div class="row">
+    <span class="nm">${esc(name)}</span>
+    <span class="px ${ok?"pos":"warnc"}">${ok?"ok":"unavailable"}</span>
+    <span class="ch dim" style="min-width:0;text-align:right">${esc(detail||"")}</span></div>`;
+  const missing = DATA.missing || [];
+  return `<div class="panel">
+    <header><h2>Sources</h2>
+      <span class="hint">built ${DATA.age_s!=null?`${DATA.age_s}s ago`:"—"} ·
+        every row says where it came from</span></header>
+    <div class="body"><div class="rows">
+      ${line("Yahoo — indices, FX, commodities, volatility", (S.yahoo||{}).ok, "")}
+      ${line("FRED — US rates and credit spreads", (S.fred||{}).ok,
+             (S.fred||{}).error || ((S.fred||{}).has_key ? "key set" : "no key — Settings"))}
+      ${line("ECB — deposit rate, euro-area curve", (S.ecb||{}).ok, (S.ecb||{}).error || "")}
+      <div class="row" id="srcStream">${streamRowHTML()}</div>
+      <div class="dim" id="srcStreamNote" style="font-size:.66rem;padding:.3rem 0 0;${
+        streamState().state === "off" ? "" : "display:none"}">
+        The feed only runs while a page is watching it — it starts a moment after
+        this page opens and stops when the last one closes. Idle here and a green
+        dot in the top bar means this panel was drawn first; it repaints on the
+        next tick.</div>
+    </div>
+    <div style="margin-top:.5rem"><a href="#" id="selfTest">Run a source self-test</a>
+      <span class="dim" style="font-size:.66rem"> — calls each one for real and reports
+      which transport answered, the status and the first line that came back</span></div>
+    <div id="stOut"></div>
+    ${missing.length ? `<div class="note" style="margin-top:.5rem">
+      <b>${missing.length} row(s) have no data</b>${esc(missing.slice(0,8).join(", "))}${
+      missing.length>8?` and ${missing.length-8} more`:""}.
+      A row with no source is shown empty rather than guessed at.</div>` : ""}
+    </div></div>`;
+}
+
+/* ---------- the live half ---------- */
+function liveDot(cls, txt, title){
+  const d = $("#liveDot"), t = $("#liveTxt");
+  if(!d) return;
+  d.className = "live " + cls; d.title = title || "";
+  if(t) t.textContent = txt;
+}
+
+function liveStart(){
+  if(ES || !window.EventSource) return;
+  liveDot("", "connecting", "opening the price feed");
+  ES = new EventSource("/api/pf/live");
+  ES.onopen = () => { RETRY = 0; };
+  ES.onmessage = ev => { try{ applyLive(JSON.parse(ev.data)); }catch(e){} };
+  ES.onerror = () => {
+    if(ES && ES.readyState === EventSource.CLOSED){
+      ES = null;
+      const wait = Math.min(60000, 2000 * Math.pow(2, RETRY++));
+      liveDot("shut", "retrying", `the feed closed — trying again in ${Math.round(wait/1000)}s`);
+      clearTimeout(TIMER); TIMER = setTimeout(liveStart, wait);
+    } else liveDot("shut", "reconnecting", "the connection dropped — retrying");
+  };
+}
+
+document.addEventListener("visibilitychange", () => {
+  if(document.hidden){
+    clearTimeout(TIMER);
+    if(ES){ ES.close(); ES = null; }
+    liveDot("shut", "paused", "this tab is in the background");
+  } else { RETRY = 0; liveStart(); }
+});
+
+function applyLive(p){
+  LIVE = {state: p.state, detail: p.detail, symbols: p.symbols};
+  paintStreamRow();
+  if(p.state === "streaming")
+    p.market_open === false ? liveDot("shut","market shut","connected, nothing trading")
+      : liveDot("on","live", p.detail);
+  else if(p.state === "polling") liveDot("poll","polling", p.detail);
+  else liveDot("shut", p.state || "off", p.detail);
+
+  const q = p.market;
+  if(!q || !DATA || !DATA.rows) return;
+  let touched = false;
+  for(const r of DATA.rows){
+    const x = r.symbol && q[r.symbol];
+    if(!x || x.price == null) continue;
+    // Recompute against the stored previous close, exactly as the server does
+    // when it builds the row — so a streamed row and a rebuilt one agree.
+    if(r.prev){ r.d_abs = x.price - r.prev; r.d_pct = (x.price / r.prev - 1) * 100; }
+    r.last = x.price;
+    r.streaming = x.src === "stream";
+    touched = true;
+  }
+  // The read itself is the server's and follows on the minute's poll.
+  if(touched) render();
+}
+
+load();
+</script>
+</body>
+</html>

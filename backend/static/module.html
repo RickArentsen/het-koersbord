@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Het Koersbord</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305080A'/%3E%3Cpath d='M5 23 L12 15 L17 19 L27 7' stroke='%234FA8CE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="/term.css">
+</head>
+<body>
+<div id="shell"></div>
+<div class="wrap" id="app"></div>
+
+<script src="/term.js"></script>
+<script>
+/* Every unbuilt module renders from here. One file, not a near-identical
+   stub per module that would drift apart the moment anything changed. The
+   built ones have their own pages and are not planned here any more. */
+
+const PLAN = {
+  WCH: { intent: "Names you are researching but do not own, each with a reason and a trigger.",
+         will: ["A one-line thesis per name — why this, why now",
+                "Entry triggers: a price level, a valuation threshold, or a condition like 'after next earnings if margin holds'",
+                "A prompt when a trigger actually fires",
+                "Trades you did not take, logged — where the expensive mistakes hide"],
+         needs: "Nothing external. This is your own writing plus prices you already fetch." },
+  MAC: { intent: "The dates that move everything at once.",
+         will: ["CPI, PCE, payrolls, PMIs, GDP — with consensus, prior and actual",
+                "ECB and Fed decisions, and central bank speakers",
+                "Auction calendar"],
+         needs: "FRED is free and excellent for the series themselves. Consensus figures ahead of a release are the licensed part." },
+};
+
+const code = (location.pathname.split("/").pop() || "").toUpperCase();
+const m = MOD[code];
+const p = PLAN[code];
+
+$("#shell").innerHTML = termBar({
+  here: m ? m.code : "",
+  right: `<button class="tbtn" id="helpBtn">Help</button>
+          <a class="tbtn" href="/">Home</a>`
+});
+wireShell();
+$("#helpBtn").onclick = showHelp;
+
+if(!m){
+  $("#app").innerHTML = `<div class="panel"><div class="body">
+    <div class="note"><b>No such module</b> "${esc(code)}" is not a known code.
+    Press Help, or go <a href="/">Home</a>.</div></div></div>`;
+} else {
+  const others = MODULES.filter(x => x.code !== code);
+  $("#app").innerHTML = `
+    <div class="panel">
+      <header><h2>${esc(m.code)} · ${esc(m.title)}</h2>
+        <span class="hint">${m.state === "next" ? "next to be built" : "planned"}</span></header>
+      <div class="body">
+        <div class="note"><b>Not built yet</b>
+          ${esc(p ? p.intent : "")}</div>
+
+        <div class="grp">What it will hold</div>
+        <div class="rows">
+          ${(p ? p.will : []).map(w => `<div class="row" style="grid-template-columns:1fr">
+            <span class="nm sans" style="white-space:normal;color:var(--ink)">${esc(w)}</span></div>`).join("")}
+        </div>
+
+        <div class="grp">Where the data comes from</div>
+        <p class="sans" style="margin:.2rem 0 0;color:var(--ink-mid);max-width:74ch;line-height:1.55">
+          ${esc(p ? p.needs : "To be determined.")}</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <header><h2>Elsewhere</h2><span class="hint">or type a code into the command line</span></header>
+      <div class="mods">
+        ${others.map(x => `<a class="mod ${x.state}" href="${x.href}">
+          <span class="code">${x.code}</span>
+          <span class="ttl">${esc(x.title)}</span>
+          <span class="st">${x.state === "live" ? "● live" : (x.state === "next" ? "◆ next up" : "○ planned")}</span>
+        </a>`).join("")}
+      </div>
+    </div>`;
+}
+</script>
+</body>
+</html>

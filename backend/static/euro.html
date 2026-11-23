@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EUR · Het Koersbord</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305080A'/%3E%3Cpath d='M5 23 L12 15 L17 19 L27 7' stroke='%234FA8CE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="/term.css">
+<link rel="stylesheet" href="/kit.css">
+<style>
+#tiles{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));}
+.disc{font-family:var(--f-ui);font-size:.72rem;color:var(--ink-soft);margin-top:.45rem;line-height:1.5;}
+.txt{font-family:var(--f-ui);font-size:.75rem;color:var(--ink-mid);line-height:1.6;}
+.txt p{margin:.35rem 0;}
+.txt b{color:var(--ink);font-weight:500;}
+.sec{margin:1rem 0 .35rem;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);
+  border-bottom:1px solid var(--rule);padding-bottom:.2rem;}
+.sec:first-child{margin-top:0;}
+.ctl{display:flex;flex-wrap:wrap;gap:.4rem .8rem;align-items:center;margin-bottom:.4rem;font-size:.66rem;}
+.evs{display:flex;flex-wrap:wrap;gap:.25rem .9rem;margin-top:.35rem;font-size:.64rem;color:var(--ink-mid);}
+.evs span b{color:var(--ink);font-weight:500;}
+.spark{display:inline-block;vertical-align:middle;}
+.pos52{display:inline-block;position:relative;width:64px;height:6px;background:var(--rule);vertical-align:middle;}
+.pos52 i{position:absolute;top:-2px;width:3px;height:10px;background:var(--accent);}
+.tbl td.h{font-weight:500;}
+.split{display:flex;height:14px;border:1px solid var(--rule-strong);margin:.3rem 0 .2rem;}
+.split i{display:block;height:100%;}
+.split-key{display:flex;gap:1rem;font-size:.64rem;color:var(--ink-mid);flex-wrap:wrap;}
+.split-key i{display:inline-block;width:9px;height:9px;margin-right:.3rem;vertical-align:-1px;}
+.rule{display:flex;flex-wrap:wrap;gap:.45rem .7rem;align-items:center;font-size:.68rem;margin-top:.5rem;}
+.rule select,.rule input{background:var(--ground);border:1px solid var(--rule-strong);color:var(--ink);padding:.16rem .35rem;
+  font-family:var(--f-mono);font-size:.7rem;}
+.rule input{width:9ch;}
+.empty{font-size:.74rem;color:var(--ink-soft);font-family:var(--f-ui);padding:.4rem 0;}
+.src a{color:var(--ink-mid);}
+.err{font-size:.7rem;color:var(--warn);}
+</style>
+</head>
+<body>
+<div id="shell"></div>
+<div class="wrap" id="app"><div class="center">Loading<span class="blink">_</span></div></div>
+<script src="/term.js"></script>
+<script src="/kit.js"></script>
+<script src="/euro.js"></script>
+</body>
+</html>

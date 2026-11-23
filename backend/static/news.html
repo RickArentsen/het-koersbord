@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEWS · Het Koersbord</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305080A'/%3E%3Cpath d='M5 23 L12 15 L17 19 L27 7' stroke='%234FA8CE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="/term.css">
+<style>
+.filters{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;}
+.newslist .news{border-bottom:1px solid var(--rule);padding:.55rem 0;}
+.newslist .news .hl{font-size:.92rem;}
+.why{font-size:.6rem;color:var(--ink-soft);letter-spacing:.03em;}
+.sc{font-size:.6rem;color:var(--ink-soft);border:1px solid var(--rule-strong);padding:0 .26rem;}
+</style>
+</head>
+<body>
+<div id="shell"></div>
+<div class="wrap" id="app"><div class="center">Loading<span class="blink">_</span></div></div>
+
+<script src="/term.js"></script>
+<script>
+$("#shell").innerHTML = termBar({
+  here: "NEWS",
+  right: `<button class="tbtn" id="refBtn">Refresh feed</button>
+          <button class="tbtn on" id="reloadBtn">Reload</button>`
+});
+wireShell();
+$("#reloadBtn").onclick = () => load();
+$("#refBtn").onclick = async () => {
+  const b = $("#refBtn"); b.textContent = "Fetching…"; b.disabled = true;
+  try{ await fetch("/api/pf/brief/refresh?what=news", {method:"POST"}); }catch{}
+  b.textContent = "Refresh feed"; b.disabled = false; load();
+};
+
+let DATA = null, FILTER = "all";
+const ago = ts => { if(!ts) return "";
+  const m = Math.max(0,(Date.now()/1000 - ts)/60);
+  return m<1?"now":m<60?Math.round(m)+"m":m<48*60?Math.round(m/60)+"h":Math.round(m/1440)+"d"; };
+
+async function load(){
+  try{
+    const r = await fetch("/api/pf/news?limit=200");
+    if(!r.ok) throw new Error(r.status);
+    DATA = await r.json();
+  }catch(e){ DATA = {error: String(e.message||e), items: []}; }
+  render();
+}
+
+function render(){
+  const all = DATA.items || [];
+  const items = FILTER === "mine" ? all.filter(n => (n.mine||[]).length)
+              : FILTER === "macro" ? all.filter(n => n.macro)
+              : FILTER === "flow" ? all.filter(n => n.flow)
+              : all;
+  const btn = (k, label, n) =>
+    `<button class="tbtn ${FILTER===k?"on":""}" data-f="${k}">${label} ${n}</button>`;
+  $("#app").innerHTML = `
+    <div class="panel">
+      <header><h2>News</h2>
+        <span class="hint">${esc(DATA.provider||"")}${
+          DATA.age_s!=null && DATA.age_s < 1e8 ? ` · fetched ${Math.round(DATA.age_s/60)}m ago` : ""}
+          · ranked by what you hold, what moves markets, and how fresh it is</span>
+        <span class="filters">
+          ${btn("all","All",all.length)}
+          ${btn("mine","Your holdings",all.filter(n=>(n.mine||[]).length).length)}
+          ${btn("macro","Macro &amp; geo",all.filter(n=>n.macro).length)}
+          ${btn("flow","Positioning",all.filter(n=>n.flow).length)}
+        </span></header>
+      <div class="body newslist">
+        ${DATA.error ? `<div class="note"><b>Could not load news</b>${esc(DATA.error)}</div>` : ""}
+        ${!all.length && !DATA.error ? `<div class="note"><b>No headlines stored yet</b>
+          Add a news API key under Settings on the <a href="/">home screen</a>, then press
+          Refresh feed. Without a key this falls back to Yahoo, which only carries news about
+          tickers you already hold.</div>` : ""}
+        ${items.map(n => `<a class="news" href="${esc(n.url)}" target="_blank" rel="noopener">
+          <span class="hl">${esc(n.headline)}</span>
+          ${n.summary ? `<span class="sum">${esc(n.summary)}</span>` : ""}
+          <span class="meta">
+            ${(n.mine||[]).map(t=>`<span class="chip hold">${esc(t)}</span>`).join("")}
+            ${n.macro?'<span class="chip">macro</span>':""}
+            ${n.flow?'<span class="chip" title="hedge funds\' positioning: the FLOW page collects these">flow</span>':""}
+            <span class="dim">${esc(n.source||"")}${n.ts?` · ${ago(n.ts)}`:""}</span>
+            <span class="sp" style="flex:1"></span>
+            <span class="sc" title="${esc((n.why||[]).join(" · "))}">${n.score}</span>
+          </span>
+          ${(n.why||[]).length?`<span class="why">${esc(n.why.join(" · "))}</span>`:""}
+        </a>`).join("")}
+      </div></div>`;
+  $$("[data-f]").forEach(b => b.onclick = () => { FILTER = b.dataset.f; render(); });
+}
+load();
+</script>
+</body>
+</html>

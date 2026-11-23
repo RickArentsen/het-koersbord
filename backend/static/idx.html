@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IDX · Het Koersbord</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305080A'/%3E%3Cpath d='M5 23 L12 15 L17 19 L27 7' stroke='%234FA8CE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="/term.css">
+<link rel="stylesheet" href="/kit.css">
+<style>
+.ixsw{display:inline-flex;gap:0;margin-right:.6rem;}
+.ixsw button{background:var(--ground);border:1px solid var(--rule-strong);color:var(--ink-mid);font-family:var(--f-mono);font-size:.78rem;padding:.3rem .8rem;margin-left:-1px;cursor:pointer;letter-spacing:.04em;}
+.ixsw button.on{background:var(--accent-dim);border-color:var(--accent);color:var(--ink);}
+.ixhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:.4rem 1rem;}
+.ixhead .lvl{font-size:1.6rem;font-weight:600;}
+.ixhead .chg{font-size:.95rem;}
+.ixhead .sp{flex:1;}
+.ins{display:flex;flex-direction:column;gap:.1rem;}
+.ins .fd{display:grid;grid-template-columns:16px 1fr;gap:.45rem;font-family:var(--f-ui);font-size:.82rem;line-height:1.45;padding:.28rem 0;border-bottom:1px dotted var(--rule);}
+.ins .fd:last-child{border-bottom:0;}
+.ins .fd i{font-style:normal;font-family:var(--f-mono);text-align:center;}
+.fd.good i{color:var(--gain);} .fd.warn i{color:var(--warn);} .fd.bad i{color:var(--loss);} .fd.info i{color:var(--ink-soft);}
+.expl{font-family:var(--f-ui);font-size:.78rem;color:var(--ink-mid);line-height:1.55;margin:.2rem 0 .6rem;max-width:62rem;}
+.expl b{color:var(--ink);font-weight:500;}
+.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;}
+@media(max-width:1000px){.three{grid-template-columns:1fr;}}
+.tbl th.on{color:var(--accent);}
+.src{font-family:var(--f-ui);}
+.fbar{font-size:.66rem;}
+.seg{cursor:pointer;}
+#s-top .tiles{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
+.ctitle{font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:.5rem 0 .2rem;}
+.tbl tr.mine td:first-child{box-shadow:inset 2px 0 0 var(--warn);}
+.tbl td .nm{color:var(--ink-mid);font-family:var(--f-ui);font-size:.68rem;margin-left:.35rem;}
+.hb{display:grid;grid-template-columns:minmax(110px,30%) 1fr 4.6rem;gap:.5rem;align-items:center;font-size:.7rem;padding:.12rem 0;}
+.hb .l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-mid);}
+.hb .t{position:relative;height:11px;background:var(--sunk);}
+.hb .t .z{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--rule-strong);}
+.hb .t i{position:absolute;top:1px;bottom:1px;border-radius:2px;}
+.hb .v{text-align:right;}
+@media(max-width:560px){.hb{grid-template-columns:minmax(90px,130px) 1fr 52px;}
+  #mtbl td .nm,#mtbl th:nth-child(2),#mtbl td:nth-child(2){display:none;}}
+.map{position:relative;width:100%;height:540px;background:var(--sunk);border:1px solid var(--rule-strong);overflow:hidden;}
+@media(max-width:700px){.map{height:420px;}}
+.map .sec{position:absolute;border:1px solid var(--ground);box-sizing:border-box;}
+.map .sec > span{position:absolute;left:3px;top:1px;font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.75);z-index:2;pointer-events:none;text-shadow:0 0 3px #000;}
+.map .m{position:absolute;box-sizing:border-box;border:1px solid rgba(5,8,10,.85);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:var(--f-mono);cursor:pointer;text-shadow:0 0 2px rgba(0,0,0,.6);}
+.map .m b{font-weight:600;line-height:1.1;}
+.map .m span{opacity:.9;line-height:1.1;}
+.map .m:hover{outline:2px solid var(--ink);z-index:3;}
+.mtip{position:fixed;z-index:60;pointer-events:none;background:rgba(5,8,10,.96);border:1px solid var(--rule-strong);padding:.4rem .5rem;font-size:.7rem;line-height:1.45;max-width:280px;display:none;}
+.scale{display:flex;align-items:center;gap:.3rem;font-size:.6rem;color:var(--ink-soft);margin-top:.3rem;}
+.scale i{display:inline-block;width:22px;height:9px;}
+.kv{display:flex;justify-content:space-between;gap:1rem;padding:.22rem 0;border-bottom:1px dotted var(--rule);font-size:.74rem;}
+.kv>span:first-child{color:var(--ink-mid);}
+.kv>span:last-child{font-weight:500;text-align:right;}
+.big{font-size:1.25rem;font-weight:600;}
+.prog{font-family:var(--f-ui);font-size:.82rem;color:var(--ink-mid);line-height:1.6;}
+.pill{display:inline-block;font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--rule-strong);color:var(--ink-soft);padding:0 .25rem;margin-left:.3rem;}
+</style>
+</head>
+<body>
+<div id="shell"></div>
+<div class="wrap" id="app"><div class="center">Loading<span class="blink">_</span></div></div>
+<div class="mtip" id="mtip"></div>
+<script src="/term.js"></script>
+<script src="/kit.js"></script>
+<script src="/idx.js"></script>
+</body>
+</html>

@@ -1,0 +1,2002 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PORT · Het Koersbord</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305080A'/%3E%3Cpath d='M5 23 L12 15 L17 19 L27 7' stroke='%234FA8CE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="/term.css">
+<style>
+/* ==========================================================================
+   PORT — the portfolio screen.
+
+   Everything structural lives in term.css, which the home screen also uses,
+   so the two match by construction rather than by my remembering to keep
+   them in step. What is left here is only what this screen has and the home
+   screen does not: the equity chart, the holdings table, the modal, and the
+   bar charts.
+
+   There is no light theme. There used to be, and keeping two palettes in
+   step across two screens is how designs drift apart.
+   ========================================================================== */
+
+:root{
+  --s1:var(--accent);        /* series 1 — this portfolio */
+  --s2:#D9A441;              /* series 2 — the benchmark */
+  --accent-soft:var(--accent-dim);
+  --warn-soft:var(--warn-dim);
+  --shadow:0 12px 44px rgba(0,0,0,.66);
+}
+
+main{padding:clamp(.5rem,1.4vw,.9rem);display:flex;flex-direction:column;gap:.7rem;
+     max-width:1680px;margin:0 auto;}
+
+/* panels: term.css styles `.panel > header`; this screen writes `.panel > h2`
+   directly, and both must come out identical. */
+.panel > h2{
+  margin:0;padding:.34rem .65rem;background:var(--sunk);border-bottom:1px solid var(--rule);
+  font-size:.68rem;font-weight:600;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--ink-mid);display:flex;justify-content:space-between;align-items:center;
+  gap:.7rem;flex-wrap:wrap;}
+.panel > h2 .hint{font-size:.66rem;color:var(--ink-soft);letter-spacing:.04em;
+  text-transform:none;font-weight:400;}
+.pad{padding:.6rem .65rem;}
+.sub{font-size:.68rem;color:var(--ink-soft);}
+
+/* headline figures — the same grid the home screen uses for its six */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);
+       border:1px solid var(--rule-strong);}
+@media(max-width:1240px){.tiles{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:820px){.tiles{grid-template-columns:repeat(2,1fr);}}
+.tile{background:var(--surface);padding:.5rem .6rem .55rem;display:flex;flex-direction:column;gap:.1rem;}
+.tile .k{font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);}
+.tile .v{font-size:1.24rem;font-weight:600;letter-spacing:-.01em;line-height:1.1;}
+.tile .s{font-size:.66rem;color:var(--ink-soft);}
+.tile.hero{background:#0D161B;}
+
+/* controls */
+.btn{background:var(--surface);border:1px solid var(--rule-strong);border-radius:0;
+  padding:.24rem .62rem;font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-mid);font-family:var(--f-mono);}
+.btn:hover{border-color:var(--accent);color:var(--accent);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#00161F;font-weight:600;}
+.btn.primary:hover{opacity:.88;color:#00161F;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+select,input[type=text],input[type=number],input[type=date]{
+  background:var(--ground);border:1px solid var(--rule-strong);border-radius:0;
+  padding:.24rem .5rem;font-size:.76rem;font-family:var(--f-mono);color:var(--ink);}
+select:focus,input:focus{border-color:var(--accent);outline:none;}
+
+/* chart */
+.chartwrap{padding:.45rem .3rem .2rem;position:relative;}
+svg.chart{display:block;width:100%;height:auto;overflow:visible;}
+.legend{display:flex;gap:1rem;padding:.1rem .65rem .6rem;flex-wrap:wrap;align-items:center;}
+.legend span{display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--ink-mid);}
+.swatch{width:14px;height:3px;flex:none;}
+/* the equity curve's presets and its readout, above the chart's corner */
+.curvebar{display:flex;flex-wrap:wrap;gap:.4rem .9rem;align-items:center;justify-content:space-between;padding:.35rem .9rem 0;}
+.curvebar .seg{background:var(--ground);border:1px solid var(--rule-strong);color:var(--ink-mid);font-size:.6rem;padding:.12rem .45rem;letter-spacing:.04em;cursor:pointer;font-family:inherit;}
+.curvebar .seg:hover{border-color:var(--accent);color:var(--ink);}
+.curvebar .seg.on{background:var(--accent-dim);border-color:var(--accent);color:var(--ink);}
+.cread{font-size:.68rem;color:var(--ink-mid);font-variant-numeric:tabular-nums;min-height:1.1em;text-align:right;margin-left:auto;}
+.cread b{color:var(--ink);font-weight:600;margin-right:.3rem;}
+.cread .sw{position:static;display:inline-block;width:.55rem;height:.55rem;margin:0 .25rem 0 .6rem;vertical-align:baseline;font-style:normal;}
+#cw svg.chart{cursor:crosshair;user-select:none;}
+.tip{position:absolute;pointer-events:none;background:var(--surface);
+  border:1px solid var(--rule-strong);padding:.4rem .55rem;font-size:.72rem;
+  box-shadow:var(--shadow);white-space:nowrap;z-index:5;opacity:0;transition:opacity .08s;}
+.tip b{display:block;font-size:.62rem;letter-spacing:.08em;color:var(--ink-soft);
+  font-weight:500;margin-bottom:.2rem;}
+.tip i{font-style:normal;display:inline-block;width:8px;height:8px;margin-right:.35rem;}
+
+/* tabs */
+.tabs{display:inline-flex;border:1px solid var(--rule-strong);}
+.tabs button{background:var(--surface);border:0;border-right:1px solid var(--rule-strong);
+  padding:.22rem .7rem;font-size:.68rem;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--ink-soft);font-family:var(--f-mono);}
+.tabs button:last-child{border-right:0;}
+.tabs button[aria-pressed="true"]{background:var(--accent);color:#00161F;}
+
+/* holdings table */
+.tablewrap{overflow-x:auto;max-height:74vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+table{border-collapse:collapse;width:100%;font-size:.75rem;}
+thead th{position:sticky;top:0;z-index:2;background:var(--sunk);text-align:right;
+  font-weight:500;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-soft);padding:.42rem .5rem;border-bottom:1px solid var(--rule-strong);
+  white-space:nowrap;cursor:pointer;user-select:none;}
+thead th.l{text-align:left;}
+thead th:hover{color:var(--accent);}
+thead th[aria-sort]{color:var(--accent);}
+tbody td{padding:.32rem .5rem;border-bottom:1px solid var(--rule);text-align:right;
+  white-space:nowrap;}
+tbody td.l{text-align:left;}
+tbody tr{cursor:pointer;}
+tbody tr:hover{background:#0E151A;}
+tbody tr:hover .edit{opacity:1;}
+/* a 15-column table is only usable sideways if you can still see the row */
+thead th:first-child,tbody td:first-child{position:sticky;left:0;z-index:1;
+  background:var(--surface);box-shadow:1px 0 0 var(--rule);}
+thead th:first-child{z-index:3;background:var(--sunk);}
+tbody tr:hover td:first-child{background:#0E151A;}
+.nm{display:flex;align-items:center;gap:.45rem;}
+.nm b{font-weight:600;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tk{font-size:.65rem;color:var(--ink-soft);}
+.edit{opacity:0;font-size:.6rem;color:var(--accent);font-weight:600;transition:opacity .1s;flex:none;}
+.chip{font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;
+  border:1px solid var(--rule-strong);color:var(--ink-soft);padding:0 .28rem;flex:none;}
+.chip.warnc{border-color:var(--warn);color:var(--warn);background:var(--warn-dim);}
+.chip.deriv{border-color:var(--s2);color:var(--s2);}
+
+/* bars */
+.bars{display:flex;flex-direction:column;gap:.38rem;}
+.brow{display:grid;grid-template-columns:1fr 58px;gap:.6rem;align-items:center;}
+.blabel{font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.btrack{height:6px;background:var(--sunk);overflow:hidden;margin-top:.18rem;}
+.bfill{height:100%;background:var(--s1);}
+.bval{text-align:right;font-size:.72rem;color:var(--ink-mid);}
+
+/* key/value lists */
+.kv{display:flex;justify-content:space-between;gap:1rem;padding:.22rem 0;
+  border-bottom:1px dotted var(--rule);font-size:.76rem;}
+.kv:last-child{border-bottom:0;}
+.kv span:first-child{color:var(--ink-mid);}
+.kv span:last-child{font-weight:500;text-align:right;min-width:0;overflow-wrap:anywhere;}
+
+.note{background:var(--warn-dim);border:1px solid var(--warn);border-left-width:2px;
+  padding:.45rem .6rem;font-size:.75rem;}
+.note b{display:block;font-size:.6rem;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--warn);margin-bottom:.2rem;}
+.note.err{background:transparent;border-color:var(--loss);} .note.err b{color:var(--loss);}
+.note.ok{background:transparent;border-color:var(--gain);} .note.ok b{color:var(--gain);}
+.drop{border:1px dashed var(--rule-strong);padding:1.3rem;text-align:center;
+  color:var(--ink-mid);font-size:.8rem;}
+.drop.hot{border-color:var(--accent);background:var(--accent-dim);}
+.hide{display:none!important;}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(3,6,8,.82);z-index:100;display:flex;
+  align-items:flex-start;justify-content:center;padding:6vh 1rem 2rem;overflow-y:auto;}
+.modal{background:var(--surface);border:1px solid var(--rule-strong);
+  box-shadow:var(--shadow);width:min(620px,100%);}
+.modal h3{margin:0;padding:.5rem .7rem;background:var(--sunk);border-bottom:1px solid var(--rule);
+  font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-mid);
+  font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:1rem;}
+.modal .x{background:none;border:0;font-size:1.1rem;line-height:1;color:var(--ink-soft);padding:0 .2rem;}
+.modal .x:hover{color:var(--loss);}
+.mbody{padding:.75rem;}
+.mfoot{padding:.6rem .75rem;border-top:1px solid var(--rule);display:flex;gap:.5rem;
+  justify-content:flex-end;align-items:center;}
+.field{display:grid;grid-template-columns:150px 1fr;gap:.7rem;align-items:center;margin-bottom:.55rem;}
+.field label{font-size:.74rem;color:var(--ink-mid);}
+.field input,.field select{width:100%;}
+.field .fh{grid-column:2;font-size:.66rem;color:var(--ink-soft);margin-top:-.3rem;}
+@media(max-width:560px){.field{grid-template-columns:1fr;gap:.25rem;}.field .fh{grid-column:1;}}
+
+/* ---------- risk, attribution, discipline ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:.7rem .9rem;}
+.stat{display:flex;flex-direction:column;gap:.06rem;min-width:0;}
+.stat .k{font-size:.59rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);}
+.stat .v{font-size:1.1rem;font-weight:600;line-height:1.2;letter-spacing:-.01em;}
+.stat .s{font-size:.66rem;color:var(--ink-soft);line-height:1.35;}
+.btab{width:100%;border-collapse:collapse;font-size:.74rem;}
+.btab th{text-align:right;font-size:.57rem;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-soft);font-weight:500;padding:.22rem .4rem;border-bottom:1px solid var(--rule);
+  white-space:nowrap;}
+.btab th.l,.btab td.l{text-align:left;}
+.btab td{padding:.32rem .4rem;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap;}
+.btab tr:last-child td{border-bottom:0;}
+.btab tr.best td{background:var(--accent-dim);}
+/* the benchmark name is the only long cell — let it wrap rather than push the
+   whole page sideways on a phone, and keep a scroll container as a backstop */
+.btab td.l,.btab th.l{white-space:normal;}
+.btabwrap{overflow-x:auto;}
+/* year by year: one column per calendar year, the rows in four groups */
+.ytab tbody tr{cursor:default;}
+.ytab th{cursor:default;}
+.ytab th small{display:block;font-size:.55rem;letter-spacing:.04em;text-transform:none;color:var(--ink-soft);font-weight:400;}
+.ytab tr.grp td{font-size:.57rem;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-soft);
+  text-align:left;padding-top:.6rem;border-bottom:1px solid var(--rule-strong);background:var(--surface);}
+.ytab tr.key td{font-weight:600;}
+.ytab td.l{color:var(--ink-mid);}
+.ytab tr.key td.l{color:var(--ink);}
+.ytab td.all,.ytab th.all{background:var(--sunk);}
+.ytab td .sub{font-size:.62rem;}
+.r2{display:inline-block;width:42px;height:6px;background:var(--sunk);overflow:hidden;
+  vertical-align:middle;margin-right:.4rem;}
+.r2 i{display:block;height:100%;background:var(--s1);}
+.crow{display:grid;grid-template-columns:1fr 140px 84px 58px;gap:.55rem;align-items:center;
+  font-size:.74rem;padding:.18rem 0;border-bottom:1px dotted var(--rule);}
+.crow:last-child{border-bottom:0;}
+.crow .cn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.crow .ce,.crow .cp{text-align:right;}
+.crow .cp{color:var(--ink-soft);}
+.cbar{position:relative;height:8px;background:var(--sunk);}
+.cbar i{position:absolute;top:0;height:100%;}
+.cbar u{position:absolute;top:-2px;bottom:-2px;left:50%;width:1px;background:var(--rule-strong);}
+.cgap{font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);
+  padding:.5rem 0 .2rem;}
+/* risk by holding: weight above, share of risk below, on one scale */
+.rrow{display:grid;grid-template-columns:minmax(96px,1.2fr) 2.2fr 46px 46px 40px 40px;gap:.5rem;
+  align-items:center;font-size:.74rem;padding:.2rem 0;border-bottom:1px dotted var(--rule);}
+.rrow:last-child{border-bottom:0;}
+.rrow.hd{font-size:.57rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-soft);
+  border-bottom:1px solid var(--rule);padding-bottom:.25rem;}
+.rrow > span{text-align:right;white-space:nowrap;}
+.rrow .rn{text-align:left;overflow:hidden;text-overflow:ellipsis;}
+.rrow .rn a{color:var(--ink);} .rrow .rn a:hover{color:var(--accent);}
+.rb{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.rb i{display:block;height:5px;min-width:1px;background:var(--ink-soft);}
+.rb i.r{background:var(--s1);} .rb i.off{background:var(--gain);}
+.rsay{margin:0 0 .7rem;padding:0;list-style:none;font-family:var(--f-ui);font-size:.8rem;line-height:1.5;}
+.rsay li{padding:.18rem 0 .18rem .8rem;position:relative;}
+.rsay li::before{content:"";position:absolute;left:0;top:.72em;width:4px;height:4px;background:var(--accent);}
+.rgrp{display:grid;grid-template-columns:1fr 44px 44px;gap:.5rem;align-items:baseline;font-size:.74rem;
+  padding:.2rem 0;border-bottom:1px dotted var(--rule);}
+.rgrp:last-child{border-bottom:0;}
+.rgrp span{text-align:right;} .rgrp .gn{text-align:left;min-width:0;overflow-wrap:anywhere;}
+.sbar{position:relative;height:8px;background:var(--sunk);}
+.sbar i{position:absolute;top:0;height:100%;background:var(--s1);}
+.sbar i.neg{background:var(--ink-soft);}
+.sbar u{position:absolute;top:-2px;bottom:-2px;left:25%;width:1px;background:var(--rule-strong);}
+.srow{display:grid;grid-template-columns:minmax(92px,1fr) 1.4fr 44px;gap:.5rem;align-items:center;
+  font-size:.74rem;padding:.2rem 0;border-bottom:1px dotted var(--rule);}
+.srow:last-child{border-bottom:0;} .srow span:last-child{text-align:right;}
+@media(max-width:640px){.rrow{grid-template-columns:minmax(80px,1fr) 1.4fr 42px 42px;}
+  .rrow > span:nth-child(5),.rrow > span:nth-child(6){display:none;}}
+.foot{font-size:.68rem;color:var(--ink-soft);padding:.5rem .65rem;
+  border-top:1px solid var(--rule);line-height:1.55;}
+.foot b{color:var(--ink-mid);font-weight:600;}
+@media(max-width:640px){.crow{grid-template-columns:1fr 80px 54px;}.crow .cbar{display:none;}}
+
+/* ---------- layout ---------- */
+.grid2{display:grid;grid-template-columns:2fr 1fr;gap:.7rem;align-items:start;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem;}
+/* A grid item defaults to min-width:auto, which is its MIN-CONTENT width — so
+   one unbreakable table or a long word inside a panel widens the whole track
+   and pushes the page sideways on a phone. This is the fix for that, and the
+   reason the inner scroll containers above are allowed to do their job. */
+.grid2>*,.grid4>*{min-width:0;}
+@media(max-width:1180px){.grid4{grid-template-columns:1fr 1fr;}}
+@media(max-width:980px){.grid2{grid-template-columns:1fr;}}
+@media(max-width:640px){.grid2,.grid4{grid-template-columns:1fr;}}
+
+.qmark{display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;
+  border:1px solid var(--rule-strong);color:var(--ink-soft);font-size:.56rem;
+  text-decoration:none;vertical-align:middle;}
+.qmark:hover{border-color:var(--accent);color:var(--accent);text-decoration:none;}
+
+
+/* ---------- position popup ---------- */
+.pgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:1rem;align-items:start;}
+@media(max-width:620px){.pgrid{grid-template-columns:1fr;}}
+.phead{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap;margin-bottom:.4rem;}
+.ptk{font-size:.8rem;font-weight:600;letter-spacing:.1em;}
+.pprice{font-size:1.3rem;font-weight:600;}
+.pchart{width:100%;height:150px;display:block;background:var(--ground);
+  border:1px solid var(--rule);}
+.pchart-empty{border:1px dashed var(--rule-strong);padding:2.4rem 1rem;text-align:center;}
+.ptrades{max-height:150px;overflow:auto;}
+.tklink{text-decoration:none;}
+.tklink:hover{color:var(--accent);text-decoration:underline;}
+
+/* ---------- live ----------
+   The indicator and the flash animation now live in term.css, because the
+   home screen, MKT and the ticker page all use them too. */
+/* ---------- responsive ---------- */
+@media(max-width:900px){
+  body{font-size:14px;}
+  main{padding:.55rem;gap:.55rem;}
+  .tile .v{font-size:1.12rem;}
+  .pad{padding:.55rem;}
+  .tablewrap{max-height:66vh;}
+  table{font-size:.72rem;}
+  thead th,tbody td{padding:.34rem .42rem;}
+  .nm b{max-width:150px;}
+  .modal{width:100%;}
+  .scrim{padding:0;align-items:stretch;}
+  .modal h3{position:sticky;top:0;background:var(--sunk);z-index:2;}
+  .mfoot{position:sticky;bottom:0;background:var(--surface);}
+}
+@media(max-width:520px){
+  .nm b{max-width:112px;}
+  table{font-size:.7rem;}
+}
+@media(pointer:coarse){
+  .btn,select,.tabs button{min-height:38px;}
+  .edit{opacity:1;}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+
+<div id="shell"></div>
+
+<main id="app"><div class="center">Loading portfolio…</div></main>
+<div id="modalRoot"></div>
+
+<script src="/term.js"></script>
+<script>
+/* Formatting, the module registry and the command line all come from term.js,
+   which the home screen loads too. Redefining them here is how two screens
+   quietly start disagreeing about what a date looks like. Only `my`, which
+   nothing else needs, is local. */
+const my = d => { const m=String(d??"").match(/^(\d{4})-(\d{2})/); return m?`${m[2]}/${m[1]}`:String(d??""); };
+
+$("#shell").innerHTML = termBar({
+  here: "PORT",
+  right: `<span class="term-meta" id="asof">loading&hellip;</span>
+          <span class="live shut" id="liveDot" title="Live price feed"><i></i><span id="liveTxt">offline</span></span>
+          <button class="tbtn" id="importBtn">Import / add</button>
+          <button class="tbtn on" id="refreshBtn">Refresh</button>`
+});
+wireShell();
+
+let DATA=null, TAB="open", RISK=null, RISK_ALL=false;
+let SORT={open:{k:"value_eur",dir:-1}, closed:{k:"closed",dir:-1}};
+
+/* ================= modal ================= */
+function openModal(title, bodyHTML, footHTML){
+  $("#modalRoot").innerHTML = `<div class="scrim" id="scrim"><div class="modal" role="dialog" aria-modal="true">
+    <h3>${title}<button class="x" id="mClose" aria-label="Close">&times;</button></h3>
+    <div class="mbody">${bodyHTML}</div>
+    ${footHTML?`<div class="mfoot">${footHTML}</div>`:""}
+  </div></div>`;
+  $("#mClose").onclick = closeModal;
+  $("#scrim").onclick = e => { if(e.target.id==="scrim") closeModal(); };
+  document.addEventListener("keydown", escClose);
+}
+function closeModal(){ $("#modalRoot").innerHTML=""; document.removeEventListener("keydown", escClose); }
+function escClose(e){ if(e.key==="Escape") closeModal(); }
+
+/* ================= load ================= */
+async function load(){
+  try{
+    const r = await fetch("/api/pf/dashboard?benchmark=SP500");
+    if(!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+    DATA = await r.json();
+  }catch(e){
+    $("#app").innerHTML = `<div class="panel pad"><div class="note err"><b>Backend not reachable</b>
+      Start it with <code>python portfolio_app.py</code> in the backend folder.<br><span class="sub">${esc(e.message)}</span></div></div>`;
+    return;
+  }
+  if(DATA.empty){
+    $("#app").innerHTML = `<div class="panel pad"><div class="note"><b>No transactions yet</b>
+      Press <b>Import / add…</b> and drop in your DEGIRO <b>Transactions.csv</b> and <b>Account.csv</b>,
+      or enter a trade by hand.</div></div>`;
+    return;
+  }
+  render();
+  liveStart();
+  loadRiskMap();
+}
+$("#refreshBtn").onclick = load;
+
+/* Risk by holding is a download of two years of prices the first time, so it
+   arrives after the page rather than holding it up. */
+async function loadRiskMap(){
+  try{ RISK = await (await fetch("/api/pf/riskmap")).json(); }
+  catch(e){ RISK = {available:false, why:String(e.message||e)}; }
+  const host = $("#riskmap");
+  if(host){ host.innerHTML = riskMapPanels(); wireRiskMap(); }
+  // RISK on the command line lands here before the panels have their height.
+  if(host && location.hash === "#riskmap" && !loadRiskMap.went){ loadRiskMap.went = true; host.scrollIntoView(); }
+}
+$("#importBtn").onclick = importModal;
+
+/* ================= live prices =================
+   The day change is pushed from the server over SSE. EventSource is used
+   rather than a websocket because this is one-way traffic and it reconnects
+   by itself when the laptop lid closes and opens again.
+
+   The page NEVER silently shows stale numbers as if they were live: the dot
+   in the top bar states which of three things is true — streaming, polling
+   because the stream is unavailable, or nothing (market shut, or no feed). */
+
+const dayPct = T => T?.day_pct ?? null;
+
+let ES = null, PREV = {}, LIVE = null, LIVE_RETRY = 0, LIVE_TIMER = null;
+
+function liveDot(cls, txt, title){
+  const d = $("#liveDot"), t = $("#liveTxt");
+  if(!d) return;
+  d.className = "live " + cls;
+  d.title = title || "";
+  if(t) t.textContent = txt;
+}
+
+function liveStart(){
+  if(ES || !window.EventSource) return;
+  liveDot("", "connecting", "opening the price feed");
+  ES = new EventSource("/api/pf/live");
+  ES.onopen = () => { LIVE_RETRY = 0; };
+  ES.onmessage = ev => { try{ applyLive(JSON.parse(ev.data)); }catch(e){} };
+  ES.onerror = () => {
+    // EventSource retries by itself ONLY while the connection is merely
+    // broken. If the server answered with an error the browser closes it for
+    // good, and the old code then sat on "reconnecting" forever with a dead
+    // socket — the page looked frozen while being perfectly idle.
+    if(ES && ES.readyState === EventSource.CLOSED){
+      ES = null;
+      const wait = Math.min(60000, 2000 * Math.pow(2, LIVE_RETRY++));
+      liveDot("shut", "retrying", `the feed closed — trying again in ${Math.round(wait/1000)}s`);
+      clearTimeout(LIVE_TIMER);
+      LIVE_TIMER = setTimeout(liveStart, wait);
+    } else {
+      liveDot("shut", "reconnecting", "the connection dropped — retrying");
+    }
+  };
+}
+
+/* A background tab gets its timers throttled and its socket is of no use to
+   anyone. Drop it, and pick it up again on return — which also releases the
+   feed server-side when the last page stops watching. */
+document.addEventListener("visibilitychange", () => {
+  if(document.hidden){
+    clearTimeout(LIVE_TIMER);
+    if(ES){ ES.close(); ES = null; }
+    liveDot("shut", "paused", "this tab is in the background");
+  } else if(DATA){
+    LIVE_RETRY = 0; liveStart();
+  }
+});
+
+function applyLive(p){
+  // What the dot says. "Streaming" while the market is shut is technically
+  // true and practically misleading, so the market state wins.
+  if(p.state === "streaming")
+    p.market_open === false ? liveDot("shut","market shut",
+        "connected to the feed, but nothing is trading right now")
+      : liveDot("on","live", p.detail);
+  else if(p.state === "polling") liveDot("poll","polling", p.detail);
+  else liveDot("shut", p.state || "off", p.detail);
+
+  LAST_EVENT = Date.now();
+  if(!DATA || !p.totals || !p.positions) return;
+  LIVE = p;
+  const T = p.totals;
+
+  setLive($("#dayV"), `${eur(T.day_eur,0)} <span style="font-size:.78rem;font-weight:500">${pct(dayPct(T))}</span>`,
+          "day", T.day_eur);
+  const legs = $("#dayLegs");
+  if(legs) legs.innerHTML = `share price ${eur(T.day_price_eur,0)} &middot; currency ${eur(T.day_fx_eur,0)}`;
+  const when = $("#dayWhen");
+  if(when) when.textContent = p.last_tick
+    ? `vs each market's last close · ${p.live_rows} priced live`
+    : "vs each market's last close";
+  const dt = $("#dayTag"); if(dt) dt.innerHTML = dayTag(T.day_tags);
+  const dl = $("#dayLast"); if(dl) dl.innerHTML = lastLine(T);
+  const dr = $("#dayRange"); if(dr) dr.innerHTML = rangeLine(p.day_range);
+  const dv = $("#dayV");
+  if(dv) dv.className = "v " + sgn(T.day_eur);
+
+  setLive($("#nwV"), eur(T.net_worth_eur), "nw", T.net_worth_eur);
+  const ns = $("#nwS");
+  if(ns) ns.textContent = `${eur(T.value_eur)} invested · ${eur(DATA.totals.cash_eur??0)} cash`;
+  const uv = $("#unV");
+  if(uv){ setLive(uv, eur(T.unreal_eur), "un", T.unreal_eur); uv.className = "v " + sgn(T.unreal_eur); }
+  const us = $("#unS");
+  if(us && DATA.totals.cost_eur) us.textContent = pct(T.unreal_eur/DATA.totals.cost_eur*100) + " on cost";
+
+  if(TAB !== "open") return;
+  for(const r of p.positions){
+    const tr = document.querySelector(`tr[data-isin="${CSS.escape(r.isin)}"]`);
+    if(!tr) continue;
+    cell(tr,"price", r.price.toFixed(2), null, r.isin+":px", r.price);
+    cell(tr,"day_pct", pct(r.day_pct) + dayTag(r.day_tag ? [r.day_tag] : []), sgn(r.day_pct), r.isin+":dp", r.day_pct);
+    cell(tr,"day_eur", eur(r.day_eur,0), sgn(r.day_eur), r.isin+":de", r.day_eur);
+    cell(tr,"day_fx_eur", eur(r.day_fx_eur,0), sgn(r.day_fx_eur), r.isin+":dfx", r.day_fx_eur);
+    cell(tr,"value_eur", eur(r.value_eur), null, r.isin+":v", r.value_eur);
+    cell(tr,"unreal_eur", eur(r.unreal_eur), sgn(r.unreal_eur), r.isin+":u", r.unreal_eur);
+  }
+}
+
+/* Write only what changed.
+
+   The first version rewrote every cell on every event — about 280 innerHTML
+   assignments a second across 46 rows, each invalidating layout, plus a
+   forced reflow per cell from the flash. That is enough to make the tab
+   stutter and, with the table scrolled, to feel like it has hung. Comparing
+   first means a quiet market costs nothing at all. */
+function cell(tr, k, html, cls, id, val){
+  if(PREV[id] === val) return;
+  const td = tr.querySelector(`td[data-k="${k}"]`);
+  if(!td) return;
+  td.innerHTML = html;
+  if(cls !== null) td.className = cls || "";
+  flash(td, id, val);
+}
+
+function setLive(el, html, id, val){
+  if(!el || PREV[id] === val) return;
+  el.innerHTML = html;
+  flash(el, id, val);
+}
+
+/* A number that moved gets a one-off green or red wash and then goes back to
+   its normal colour. A permanent highlight would turn into decoration within
+   a minute and stop meaning anything. */
+function flash(el, id, val){
+  const was = PREV[id];
+  PREV[id] = val;
+  if(was === undefined || was === val || val == null) return;
+  el.classList.remove("fl-up","fl-dn");
+  void el.offsetWidth;                       // restart the animation
+  el.classList.add(val > was ? "fl-up" : "fl-dn");
+}
+
+/* Nothing arriving for a while means the connection is gone even though no
+   error fired — a laptop that slept, or a proxy that dropped a socket
+   silently. The server heartbeats every 15s, so 45s of nothing is dead. */
+let LAST_EVENT = 0;
+setInterval(() => {
+  if(!ES || !LAST_EVENT || Date.now() - LAST_EVENT < 45000) return;
+  liveDot("shut", "stalled", "no heartbeat for 45s — reopening the feed");
+  ES.close(); ES = null; LIVE_RETRY = 0; liveStart();
+}, 15000);
+
+
+/* ================= one position, in detail =================
+   Opened by clicking a row. The chart carries YOUR TRADES on it — a price
+   line without your entries is a chart of a company; with them it is a chart
+   of a decision, which is the only version worth looking at. */
+
+async function positionModal(isin){
+  openModal("Loading…", `<div class="sub">Reading the position<span class="blink">_</span></div>`, "");
+  let d;
+  try{
+    const r = await fetch("/api/pf/position/" + encodeURIComponent(isin));
+    if(!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || r.status);
+    d = await r.json();
+  }catch(e){
+    openModal("Position", `<div class="note err"><b>Could not load it</b>${esc(e.message)}</div>`,
+      `<button class="btn" id="pClose">Close</button>`);
+    $("#pClose").onclick = closeModal; return;
+  }
+
+  const P = d.position || d.closed || {};
+  const ccy = d.currency || "";
+  const px = n => n==null ? "–" : nf(n, 2) + " " + ccy;
+  const kv = (a,b,cls="") => `<div class="kv"><span>${a}</span><span class="${cls}">${b}</span></div>`;
+
+  openModal(`${esc(d.name)}`, `
+    <div class="pgrid">
+      <div>
+        <div class="phead">
+          <a class="ptk" href="/t/${encodeURIComponent(d.ticker||"")}">${esc(d.ticker||"no symbol")} &rsaquo;</a>
+          <span class="pprice">${px(P.price)}</span>
+          <span class="${sgn(P.day_pct)}">${P.day_pct==null?"":pct(P.day_pct)}</span>
+          ${d.open?"":'<span class="chip warnc">closed</span>'}
+        </div>
+        ${priceChart(d)}
+        <div class="sub" style="margin-top:.3rem">
+          ${d.history.length ? `${d.history.length} sessions · ${esc(d.currency)} ·
+            low ${nf(d.lo,2)} / high ${nf(d.hi,2)} ·
+            <span style="color:var(--gain)">▲</span> buys
+            <span style="color:var(--loss)">▼</span> sells`
+            : "No price history cached for this symbol yet."}
+        </div>
+      </div>
+      <div>
+        <div class="grp">Your position</div>
+        ${d.open ? `
+          ${kv("Quantity", P.qty)}
+          ${kv("Average cost", px(P.avg_price))}
+          ${kv("Cost basis", eur(P.cost_eur,2))}
+          ${kv("Market value", `<b>${eur(P.value_eur,2)}</b>`)}
+          ${kv("Unrealised", eur(P.unreal_eur,2), sgn(P.unreal_eur))}
+          ${kv("&nbsp;&nbsp;of which currency", eur(P.unreal_fx_eur,2), sgn(P.unreal_fx_eur))}
+          ${kv("Weight", (P.weight??0).toFixed(1)+"%")}
+          ${kv("Held", (P.held_days??"–")+" days")}
+          ${kv("XIRR", P.xirr==null?"–":pct(P.xirr,1), sgn(P.xirr))}
+        ` : `
+          ${kv("Closed", dmy(P.closed))}
+          ${kv("Realised", eur(P.pnl_eur,2), sgn(P.pnl_eur))}
+          ${kv("Return", P.pnl_pct==null?"–":pct(P.pnl_pct), sgn(P.pnl_pct))}
+          ${kv("Held", (P.held_days??"–")+" days")}
+        `}
+        <div class="grp">Beyond the position</div>
+        ${kv("Realised on this name", eur(d.realised_eur,2), sgn(d.realised_eur))}
+        ${kv("Dividends received", nf(d.dividends_eur,2)+" "+ccy, "pos")}
+        ${d.div_tax_eur ? kv("Withholding", nf(d.div_tax_eur,2)+" "+ccy, "neg") : ""}
+        ${d.contribution ? kv("Contribution to return",
+          `${eur(d.contribution.total_eur,0)} · ${pct(d.contribution.points,1)}`,
+          sgn(d.contribution.total_eur)) : ""}
+        ${d.beta ? kv("Beta · R²", `${d.beta.beta} · ${(d.beta.r2*100).toFixed(0)}%`) : ""}
+        ${kv("Sector", esc(d.sector||"–"))}
+        ${kv("Country", esc(d.country||"–"))}
+        ${d.earnings ? kv("Next earnings", `${dmy(d.earnings.date)}${
+          d.earnings.eps_estimate!=null?` · est ${d.earnings.eps_estimate}`:""}`, "warnc") : ""}
+      </div>
+    </div>
+
+    <div class="grp">Your trades</div>
+    <div class="ptrades">${(d.trades||[]).slice().reverse().map(t => `<div class="row">
+      <span class="nm"><b class="${t.kind==="BUY"?"pos":"neg"}">${t.kind}</b>
+        ${t.qty} @ ${nf(t.price,2)} ${esc(ccy)}</span>
+      <span class="px">${dmy(t.d)}</span>
+      <span class="ch">${eur(t.eur,0)}</span></div>`).join("")
+      || `<div class="sub">No trades on record.</div>`}</div>
+
+    ${(d.news||[]).length ? `<div class="grp">Its news</div>
+      ${d.news.map(n => `<a class="news" href="${esc(n.url)}" target="_blank" rel="noopener">
+        <span class="hl">${esc(n.headline)}</span>
+        <span class="meta"><span class="sub">${esc(n.source||"")}</span></span></a>`).join("")}` : ""}
+  `, `<span class="sub" style="flex:1">Click the ticker for the full page on this stock.</span>
+      <button class="btn" id="pEdit">Edit instrument</button>
+      <button class="btn primary" id="pClose">Close</button>`);
+
+  $("#pClose").onclick = closeModal;
+  $("#pEdit").onclick = () => { closeModal(); editInstrument(d.isin); };
+}
+
+/* A price line with the trades marked on it. Drawn by hand rather than with a
+   library: it is one polyline and a few triangles, and a charting dependency
+   for that is not worth the page weight. */
+function priceChart(d){
+  const h = d.history || [];
+  if(h.length < 2) return `<div class="pchart-empty sub">No chart — this symbol has no cached history.</div>`;
+  const W = 460, H = 150, PAD = 4;
+  const lo = Math.min(...h.map(p=>p.c)), hi = Math.max(...h.map(p=>p.c));
+  const rng = (hi - lo) || 1;
+  const x = i => PAD + i/(h.length-1) * (W - 2*PAD);
+  const y = v => PAD + (1 - (v - lo)/rng) * (H - 2*PAD);
+  const idx = {};
+  h.forEach((p,i) => idx[p.d] = i);
+  const at = day => {
+    if(idx[day] != null) return idx[day];
+    // a trade on a day the market was shut lands on the next session
+    const after = h.findIndex(p => p.d >= day);
+    return after < 0 ? null : after;
+  };
+  const line = h.map((p,i) => `${x(i).toFixed(1)},${y(p.c).toFixed(1)}`).join(" ");
+  const up = h[h.length-1].c >= h[0].c;
+  const marks = (d.trades||[]).map(t => {
+    const i = at(t.d);
+    if(i == null) return "";
+    const cx = x(i), cy = y(h[i].c), buy = t.kind === "BUY";
+    const pts = buy ? `${cx-4},${cy+8} ${cx+4},${cy+8} ${cx},${cy+1}`
+                    : `${cx-4},${cy-8} ${cx+4},${cy-8} ${cx},${cy-1}`;
+    return `<polygon points="${pts}" fill="var(${buy?"--gain":"--loss"})" opacity=".85">
+      <title>${t.kind} ${t.qty} @ ${nf(t.price,2)} on ${dmy(t.d)}</title></polygon>`;
+  }).join("");
+  return `<svg class="pchart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
+      aria-label="price history with your trades marked">
+    <polyline points="${line}" fill="none" stroke="var(${up?"--gain":"--loss"})" stroke-width="1.4"/>
+    ${marks}
+  </svg>`;
+}
+
+/* ================= what price and FX mean ================= */
+function legModal(){
+  // Read the live figures when they exist, so this explains the number that is
+  // actually on screen rather than the one the page loaded with.
+  const T = (LIVE && LIVE.totals) || DATA.totals;
+  const live = Object.fromEntries(((LIVE && LIVE.positions) || []).map(r => [r.isin, r]));
+  const rows = (DATA.positions||[]).filter(r => r.currency !== "EUR" && !r.excluded)
+    .map(r => ({...r, ...(live[r.isin] || {})}));
+  const ex = rows.sort((a,b)=>Math.abs(b.day_fx_eur)-Math.abs(a.day_fx_eur))[0];
+  openModal("Day change — share price and currency", `
+    <p style="margin:0 0 .7rem">Your day change is one number made of two separate
+    things, and they often pull in opposite directions. Splitting them is the difference
+    between &ldquo;the share fell&rdquo; and &ldquo;the share rose but the dollar fell more&rdquo;.</p>
+
+    <div class="kv"><span><b>Share price</b> &mdash; what the company did</span>
+      <span class="${sgn(T.day_price_eur)}">${eur(T.day_price_eur,2)}</span></div>
+    <p class="sub" style="margin:.2rem 0 .8rem">Quantity &times; (today&rsquo;s price &minus;
+      yesterday&rsquo;s close), measured in the share&rsquo;s own currency and then converted
+      at today&rsquo;s rate.</p>
+
+    <div class="kv"><span><b>Currency</b> &mdash; what the euro did to what you already held</span>
+      <span class="${sgn(T.day_fx_eur)}">${eur(T.day_fx_eur,2)}</span></div>
+    <p class="sub" style="margin:.2rem 0 .8rem">Quantity &times; yesterday&rsquo;s close &times;
+      the change in the exchange rate. This holds the share price still, so it is purely the
+      currency effect on a position you owned before today opened. You never chose this bet;
+      you got it by buying shares quoted in dollars.</p>
+
+    <div class="kv"><span><b>Together</b></span>
+      <span class="${sgn(T.day_eur)}">${eur(T.day_eur,2)} &middot; ${pct(dayPct(T))}</span></div>
+    <p class="sub" style="margin:.2rem 0 .8rem">Exactly the change in the euro value of your
+      holdings since yesterday&rsquo;s close. The percentage is against what the book was worth
+      at that close &mdash; not against today&rsquo;s value, which would understate every gain.</p>
+
+    ${ex ? `<div class="note"><b>Your biggest currency effect today</b>
+      ${esc(ex.name)}: ${ex.qty} shares quoted in ${esc(ex.currency)}.
+      The share moved ${pct(ex.day_pct)} — worth ${eur(ex.day_price_eur,2)} — while the
+      currency ${ex.day_fx_eur >= 0 ? "added" : "took"} ${eur(Math.abs(ex.day_fx_eur),2)}.
+      Net ${eur(ex.day_eur,2)}.</div>` : ""}
+
+    <p class="sub" style="margin:.8rem 0 0">Realised and unrealised P&amp;L are split the same
+      way, which is why a position can be up in dollars and down in euros.</p>`,
+    `<button class="btn" id="legClose">Close</button>`);
+  $("#legClose").onclick = closeModal;
+}
+
+
+/* ================= render ================= */
+function render(){
+  const T=DATA.totals, C=DATA.curve;
+  $("#asof").textContent = `as of ${dmyTime(DATA.asof)} · ${T.positions} open`;
+
+  $("#app").innerHTML = `
+  <div class="tiles">
+    <div class="tile hero"><span class="k">Net worth</span>
+      <span class="v" id="nwV">${eur(T.net_worth_eur ?? T.value_eur)}</span>
+      <span class="s" id="nwS">${eur(T.value_eur)} invested · ${eur(T.cash_eur??0)} cash</span></div>
+    <div class="tile" id="dayTile">
+      <span class="k">Day change <a href="#" id="legHelp" class="qmark"
+        title="What share price and currency mean">?</a><span id="dayTag">${dayTag(T.day_tags)}</span></span>
+      <span class="v ${sgn(T.day_eur)}" id="dayV">${eur(T.day_eur,0)} <span style="font-size:.78rem;font-weight:500">${pct(dayPct(T))}</span></span>
+      <span class="s" id="dayLegs">share price ${eur(T.day_price_eur,0)} &middot; currency ${eur(T.day_fx_eur,0)}</span>
+      <span class="s" id="dayWhen">vs each market&rsquo;s last close</span>
+      <span class="s" id="dayLast">${lastLine(T)}</span>
+      <span class="s" id="dayRange" title="${esc(rangesTitle(T.day_ranges))}">${rangeLine(T.day_range)}</span></div>
+    <div class="tile"><span class="k">Unrealised</span>
+      <span class="v ${sgn(T.unreal_eur)}" id="unV">${eur(T.unreal_eur)}</span>
+      <span class="s" id="unS">${pct(T.unreal_pct)} on cost</span></div>
+    <div class="tile"><span class="k">Realised</span><span class="v ${sgn(T.realised_eur)}">${eur(T.realised_eur)}</span>
+      <span class="s">share price ${eur(T.realised_price_eur,0)} &middot; currency ${eur(T.realised_fx_eur,0)}</span></div>
+    <div class="tile" title="Time-weighted return since 1 January, measured the same way as the since-inception figure.">
+      <span class="k">Year to date</span>
+      <span class="v ${sgn(T.ytd_twr_pct)}">${T.ytd_twr_pct==null?"–":pct(T.ytd_twr_pct)}</span>
+      <span class="s">${T.ytd_twr_pct!=null
+        ? `${eur(T.ytd_eur)} · from ${eur(T.ytd_open_eur)} on 1 Jan`
+        : (T.ytd_coverage_pct!=null
+            ? `only ${T.ytd_coverage_pct}% of this year's value could be priced`
+            : "no price history for this year yet")}</span></div>
+    <div class="tile hero" title="Every euro made or lost since you started: net worth minus the capital you put in.">
+      <span class="k">Total return</span>
+      <span class="v ${sgn(T.profit_eur)}">${eur(T.profit_eur)}</span>
+      <span class="s">${T.total_return_pct==null?"–":pct(T.total_return_pct)} on ${
+        T.total_return_basis==="cost basis" ? `${eur(T.cost_eur)} cost` : `${eur(T.capital_eur ?? T.net_deposits_eur)} in`}${
+        T.twr_pct!=null?` · TWR ${pct(T.twr_pct)}`:""}</span></div>
+    <div class="tile" title="Money-weighted return: the annual rate that makes your deposits and today's net worth balance.">
+      <span class="k">XIRR</span><span class="v ${sgn(T.xirr)}">${T.xirr==null?"–":pct(T.xirr,1)}</span>
+      <span class="s">annualised, ${esc(T.basis||"")} basis</span></div>
+    <div class="tile ${C.benchmark_gap_eur!=null?"hero":""}"><span class="k">vs benchmark</span>
+      <span class="v ${sgn(C.benchmark_gap_eur)}">${C.benchmark_gap_eur==null?"–":eur(C.benchmark_gap_eur)}</span>
+      <span class="s">${esc(C.benchmark_label||"–")}</span></div>
+  </div>
+
+  <div class="grid2">
+    <div>
+    <div class="panel" style="margin-bottom:.9rem">
+      <h2>Equity curve <span class="hint">your money vs the same euros put into the tracker on the same days · drag across it to zoom</span></h2>
+      ${C.no_history ? "" : `<div class="curvebar"><span class="grp" id="czBar">${CZ_PRESETS.map(([l, k]) =>
+        `<button class="seg" data-cz="${k ?? ""}">${l}</button>`).join("")}</span><span class="cread" id="cread"></span></div>`}
+      <div class="chartwrap" id="cw">${curveSVG(C)}</div>
+      <div class="legend">
+        ${dataQualityInline()}
+        <span><i class="swatch" style="background:var(--s1)"></i>This portfolio</span>
+        <span><i class="swatch" style="background:var(--s2)"></i>${esc(C.benchmark_label||"Benchmark")}</span>
+        ${C.no_history?'':(C.mostly_carried
+          ? `<span class="sub" style="color:var(--warn)">${C.carried_share_pct}% of this line is carried at last trade prices,
+             not market prices — shape only. TWR and drawdown are withheld until real history loads.</span>`
+          : `<span class="sub">TWR ${pct(C.twr_pct)} · max drawdown ${pct(C.max_drawdown_pct)} · now ${pct(C.current_drawdown_pct)} off peak${
+             C.unpriced_days?` · ${C.unpriced_days} day(s) partly carried`:""}</span>`)}
+      </div>
+    </div>
+    ${yearPanel()}
+    </div>
+    <div>
+      <div class="panel" style="margin-bottom:.9rem">
+        <h2>Cash &amp; flows</h2>
+        <div class="pad">
+          <div class="kv"><span>Deposited</span><span class="pos">${eur(T.deposits_eur,2)}</span></div>
+          <div class="kv"><span>Withdrawn</span><span class="neg">${eur(T.withdrawals_eur,2)}</span></div>
+          ${T.pending_deposits_eur?`<div class="kv" title="An iDEAL payment DEGIRO has reserved but not yet booked as a deposit: it is in your cash already, so it counts as money you put in. The deposit row follows a day or two later.">
+            <span>Deposit being processed</span><span class="pos">${eur(T.pending_deposits_eur,2)}</span></div>`:""}
+          ${T.outside_eur?`<div class="kv" title="What the ${T.outside_trades} trade${T.outside_trades===1?"":"s"} you entered by hand cost, less what hand-entered sales brought in. DEGIRO's cash balance never paid for these, so the money counts as capital you put in on the day of the trade.">
+            <span>Positions entered by hand</span><span class="${sgn(T.outside_eur)}">${eur(T.outside_eur,2)}</span></div>`:""}
+          <div class="kv"><span><b>Net capital in</b></span><span><b>${eur(T.capital_eur ?? T.net_deposits_eur,2)}</b></span></div>
+          <div class="kv" style="margin-top:.4rem"><span>Cash balance</span>
+            <span class="${sgn(T.cash_eur)}">${eur(T.cash_eur,2)}</span></div>
+          ${Object.entries(T.cash_by_ccy||{}).map(([c,v])=>{
+            const src=(T.cash_source||{})[c];
+            return `<div class="kv"><span class="sub" style="padding-left:.7rem">${esc(c)}${
+              src?` <span title="DEGIRO Saldo column, ${esc(src.row)}">· ${dmy(src.date)} ${esc(src.time)}</span>`:""}</span>
+              <span class="sub">${v.toFixed(2)}</span></div>`;}).join("")}
+          ${T.cash_eur<0?`<div class="sub" style="margin-top:.4rem;color:var(--warn)">Negative balance — you are on margin, and paying interest for it.</div>`:""}
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Costs &amp; income <span class="hint">whole history</span></h2>
+        <div class="pad">
+          <div class="kv"><span>Fees charged to the account</span><span class="neg">${eur(T.account_fees_eur,2)}</span></div>
+          <div class="kv"><span class="sub" style="padding-left:.7rem">of which trade commission</span><span class="sub">${eur(-((T.fees_eur||0)-(T.outside_fees_eur||0)),2)}</span></div>
+          ${T.outside_fees_eur?`<div class="kv"><span>Fees on trades entered by hand</span><span class="neg">${eur(-T.outside_fees_eur,2)}</span></div>`:""}
+          <div class="kv"><span>AutoFX spread <span class="sub">(not in the cash ledger)</span></span><span class="neg">${eur(-T.autofx_eur,2)}</span></div>
+          <div class="kv"><span>Margin interest</span><span class="neg">${eur(T.interest_eur,2)}</span></div>
+          <div class="kv"><span><b>Total friction</b></span><span class="neg"><b>${eur((T.account_fees_eur||0)-(T.outside_fees_eur||0)-(T.autofx_eur||0)+(T.interest_eur||0),2)}</b></span></div>
+          <div class="kv" style="margin-top:.4rem"><span>Dividends received</span><span class="pos">${eur(T.dividends_eur,2)}</span></div>
+          <div class="kv"><span>Withholding tax</span><span class="neg">${eur(T.div_tax_eur,2)}</span></div>
+          <div class="kv"><span><b>Net dividend income</b></span><span><b>${eur((T.dividends_eur||0)+(T.div_tax_eur||0),2)}</b></span></div>
+          ${T.other_eur?`<div class="kv" style="margin-top:.4rem" title="Rows in DEGIRO's statement that are not a trade, a fee, a dividend, interest or a transfer, and name no instrument. Real money in the balance, so it counts as profit.">
+            <span>Other credits from DEGIRO</span><span class="${sgn(T.other_eur)}">${eur(T.other_eur,2)}</span></div>
+          ${(T.other_rows||[]).map(r=>`<div class="kv"><span class="sub" style="padding-left:.7rem">${dmy(r.date)} · ${esc(r.what)}</span>
+            <span class="sub" style="white-space:nowrap">${r.eur.toFixed(2)}</span></div>`).join("")}`:""}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid4">
+    ${barPanel("By currency", DATA.by_currency, "your unplanned FX bet")}
+    ${barPanel("By sector", DATA.by_sector, "turbos counted at their underlying")}
+    ${barPanel("By country", DATA.by_country, "")}
+    ${riskPanel()}
+  </div>
+
+  <div class="grid2">
+    ${marketRiskPanel()}
+    ${costPanel()}
+  </div>
+
+  <div class="grid2" id="riskmap">${riskMapPanels()}</div>
+
+  <div class="grid2">
+    ${contributionPanel()}
+    ${disciplinePanel()}
+  </div>
+
+  ${leveragePanel()}
+
+  <div class="panel">
+    <h2>
+      <span class="tabs">
+        <button data-tab="open"   aria-pressed="${TAB==="open"}">Open · ${DATA.positions.length}</button>
+        <button data-tab="closed" aria-pressed="${TAB==="closed"}">Closed · ${(DATA.closed_positions||[]).length}</button>
+      </span>
+      <span class="hint">click any row to set its ticker, sector or a manual price</span>
+    </h2>
+    <div class="tablewrap" id="tw">${TAB==="open"?openTable():closedTable()}</div>
+  </div>
+  `;
+  wireTabs(); wireTable(); wireChart(); wireLevMode(); wireRiskMap();
+  const lh = $("#legHelp");
+  if(lh) lh.onclick = e => { e.preventDefault(); legModal(); };
+}
+
+/* ================= panels ================= */
+const LEV_LABEL={zero:"Valued at 0 (excluded)", last_trade:"Carried at last trade price",
+                 model:"Priced from the underlying"};
+
+async function setLevMode(mode){
+  try{
+    const r=await fetch("/api/pf/leverage-mode",{method:"POST",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify({mode})});
+    if(!r.ok) throw new Error((await r.json().catch(()=>({}))).detail||r.status);
+    await load();
+  }catch(e){ alert("Could not change valuation: "+e.message); }
+}
+
+function leveragePanel(){
+  const L=DATA.leverage;
+  if(!L || !L.derivative_positions) return "";
+  const rows=(DATA.positions||[]).filter(r=>r.lev);
+  const sel=`<select id="levMode">${(L.modes||[]).map(m=>
+      `<option value="${m}" ${m===L.mode?"selected":""}>${esc(LEV_LABEL[m]||m)}</option>`).join("")}</select>`;
+
+  if(L.mode==="zero") return `<div class="panel">
+    <h2>Leveraged products <span class="hint">${L.derivative_positions} turbo(s) · ${sel}</span></h2>
+    <div class="pad">
+      <div class="note"><b>Excluded from the portfolio</b>
+        Your ${L.derivative_positions} leveraged position(s), cost ${eur(L.derivative_cost_eur)}, are valued at
+        <b>zero</b> and contribute nothing to any total, weight or return on this page.
+        Nothing free quotes them, so this is the only figure that cannot be wrong.
+        Switch the dropdown to carry them at what you last paid, or to price them off the
+        share they track.</div>
+    </div></div>`;
+
+  return `<div class="panel">
+    <h2>Leverage &amp; real exposure
+      <span class="hint">${sel} · turbos priced from the share they track — the name carries the whole contract</span></h2>
+    <div class="pad">
+      <div class="tiles" style="border:0;margin-bottom:.8rem">
+        <div class="tile"><span class="k">Market value</span><span class="v">${eur(L.market_value_eur)}</span>
+          <span class="s">what the certificates are worth</span></div>
+        <div class="tile hero"><span class="k">Economic exposure</span><span class="v">${eur(L.exposure_eur)}</span>
+          <span class="s">what they actually control</span></div>
+        <div class="tile"><span class="k">Hidden exposure</span><span class="v ${L.hidden_eur>0?"neg":""}">${eur(L.hidden_eur)}</span>
+          <span class="s">not counted in any weight below</span></div>
+        <div class="tile"><span class="k">Priced by model</span><span class="v">${L.modelled} / ${L.positions}</span>
+          <span class="s">${L.unmodelled.length?esc(L.unmodelled.length+" need a manual price"):"all reconciled"}</span></div>
+      </div>
+      <div class="tablewrap" style="max-height:none"><table><thead><tr>
+        <th class="l">Product</th><th class="l">Tracks</th><th>Underlying</th><th class="l" title="The level the price is struck off, as of the day it was recorded, moved on at the rate SG has been moving it">Financing</th><th>Model price</th>
+        <th>Repricing error</th><th>Leverage</th><th>Knockout at</th><th>Distance</th>
+        <th>Value €</th><th>Exposure €</th></tr></thead><tbody>
+        ${rows.map(r=>{const v=r.lev, m=v.model||{};
+          const ko=v.knockout_pct, F=v.financing;
+          return `<tr data-isin="${esc(r.isin)}">
+            <td class="l"><b>${esc(r.name.slice(0,44))}</b> <span class="chip deriv">${esc((m.family||v.family||"").toLowerCase())}</span>${
+              v.stop_touched?` <span class="chip warnc" title="The share closed at or beyond the stop on ${esc(v.stop_touched)}. A turbo knocks out on an intraday touch: check DEGIRO, it may be worth nothing">stop touched ${esc(dmShort(v.stop_touched))}</span>`:""}</td>
+            <td class="l"><span class="tk">${esc(v.underlying_ticker||v.underlying||"–")}</span></td>
+            <td>${v.underlying_price!=null?v.underlying_price.toFixed(2):"–"}</td>
+            <td class="l">${F&&F.fn!=null?`${F.fn.toFixed(2)} <span class="sub" title="${esc((F.points||[]).map(p=>`${p.d}: ${p.fn} (${p.src==="typed"?"typed in":"DEGIRO export"})`).join(" · "))}">${
+              F.from?`${F.from.src==="typed"?"typed":"export"} ${esc(dmShort(F.from.d))}`:""}${F.rate_pa?` · ${F.rate_pa>0?"+":""}${F.rate_pa.toFixed(1)}%/yr`:""}</span>`:"–"}
+              <button class="lnk" data-fin="${esc(r.isin)}" title="Paste DEGIRO's current name for this turbo, or type its financing level">update</button></td>
+            <td>${v.price!=null?v.price.toFixed(3):"–"}</td>
+            <td class="${m.ok?"pos":"neg"}">${m.error_pct!=null?m.error_pct.toFixed(1)+"%":esc(m.reason||"–")}</td>
+            <td>${v.leverage?v.leverage.toFixed(2)+"×":"–"}</td>
+            <td>${v.barrier!=null?v.barrier.toFixed(2):"–"}</td>
+            <td class="${ko==null?"":(ko<15?"neg":(ko<30?"":"pos"))}">${ko==null?"–":ko.toFixed(1)+"%"}</td>
+            <td>${eur(r.value_eur)}</td><td><b>${eur(r.exposure_eur)}</b></td></tr>`;}).join("")}
+      </tbody></table></div>
+      <p class="sub" style="margin:.6rem 0 0">Leverage on a turbo is not fixed — it rises as the share
+      approaches the barrier, so the exposure figure moves with the price. A turbo is worth
+      (share − financing level) ÷ ratio, converted from the share's currency at today's rate. SG moves the
+      financing level every day by the cost of funding: each DEGIRO export records the level in the turbo's
+      name, and <b>update</b> takes it from DEGIRO's product page or the turbo's current name. Two levels a
+      few weeks apart give the rate it moves at. Not modelled: a dividend adjustment after the latest
+      recorded level, and the bid–ask spread.</p>
+    </div></div>`;
+}
+
+function wireLevMode(){
+  const el=$("#levMode"); if(el) el.onchange=e=>setLevMode(e.target.value);
+  // "update" on a turbo opens its editor at the financing field
+  $$("[data-fin]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); editInstrument(b.dataset.fin);
+    const f=$("#fFin"); if(f) f.focus(); });
+}
+const dmShort = d => { const m = String(d || "").match(/^\d{4}-(\d{2})-(\d{2})/); return m ? `${m[2]}/${m[1]}` : "–"; };
+
+function riskPanel(){
+  const c=DATA.concentration, C=DATA.curve;
+  return `<div class="panel"><h2>Risk</h2><div class="pad">
+    <div class="kv"><span>Positions held</span><span>${c.n}</span></div>
+    <div class="kv"><span><b>Effective positions</b> <span class="sub">1 / Σw²</span></span><span><b>${c.effective_n.toFixed(1)}</b></span></div>
+    <div class="kv"><span>Largest position</span><span>${(c.top1*100).toFixed(1)}%</span></div>
+    <div class="kv"><span>Top 5 weight</span><span>${(c.top5*100).toFixed(1)}%</span></div>
+    <div class="kv"><span>Max drawdown</span><span class="neg">${C.max_drawdown_pct==null?"–":pct(C.max_drawdown_pct)}</span></div>
+    <div class="kv"><span>Now off peak</span><span class="${sgn(C.current_drawdown_pct)}">${C.current_drawdown_pct==null?"–":pct(C.current_drawdown_pct)}</span></div>
+  </div></div>`;
+}
+
+/* ---------- market risk: beta, R², tracking error ---------- */
+
+function stat(k, v, s, cls){
+  return `<div class="stat"><span class="k">${k}</span>
+    <span class="v ${cls||""}">${v}</span>${s?`<span class="s">${s}</span>`:""}</div>`;
+}
+
+function marketRiskPanel(){
+  const M=DATA.market_risk||{};
+  if(!M.enough) return `<div class="panel"><h2>Market risk
+      <span class="hint">beta, R², tracking error</span></h2>
+    <div class="pad"><div class="note"><b>Not enough history yet</b>
+      ${esc(M.why||"The daily curve is too short or too thinly priced to regress.")}
+      A beta computed on less than ${M.min_obs||60} usable days is noise wearing a decimal point.
+    </div></div></div>`;
+
+  const B=M.benchmarks||[], F=M.forward||{}, V=M.volatility||{};
+  const best=B.find(b=>b.key===M.best_fit)||B[0]||{};
+
+  const rows=B.map(b=>{
+    if(b.beta==null) return `<tr><td class="l">${esc(b.label)}</td>
+      <td colspan="4" class="sub" style="text-align:left">${esc(b.why||"no estimate")}</td></tr>`;
+    return `<tr class="${b.key===M.best_fit?"best":""}">
+      <td class="l">${esc(b.label)}${b.key===M.best_fit?' <span class="chip">best fit</span>':""}</td>
+      <td title="95% confidence band ${b.beta_lo} to ${b.beta_hi}">${b.beta.toFixed(2)}
+        <span class="sub">±${((b.beta_hi-b.beta_lo)/2).toFixed(2)}</span></td>
+      <td><span class="r2"><i style="width:${(b.r2*100).toFixed(0)}%"></i></span>${(b.r2*100).toFixed(0)}%</td>
+      <td>${b.tracking_error_pct.toFixed(1)}%</td>
+      <td class="${sgn(b.information_ratio)}">${b.information_ratio==null?"–":b.information_ratio.toFixed(2)}</td>
+    </tr>`;}).join("");
+
+  // The one sentence that stops beta being read as more than it is.
+  const unexplained = best.r2!=null ? Math.round((1-best.r2)*100) : null;
+
+  return `<div class="panel"><h2>Market risk
+      <span class="hint">measured on the holdings line, ${M.n_days} usable days · five-day returns</span></h2>
+    <div class="pad">
+      <div class="btabwrap"><table class="btab"><thead><tr>
+        <th class="l">Benchmark</th><th>Beta</th><th>R²</th><th>Tracking error</th><th>Info ratio</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>
+
+      ${unexplained!=null?`<p class="sub" style="margin:.7rem 0 0;line-height:1.55">
+        Against ${esc(best.label)}, beta is <b>${best.beta.toFixed(2)}</b>, and
+        <b>${(best.r2*100).toFixed(0)}%</b> of your week-to-week moves come from that index.
+        The other <b>${unexplained}%</b> is specific to the shares you picked, and beta
+        describes none of it. Read the two together or not at all.</p>`:""}
+
+      <div class="stats" style="margin-top:.9rem">
+        ${stat("Beta now", F.beta==null?"–":F.beta.toFixed(2),
+          F.beta==null?"no position history":
+          `today's book, weighted · ${F.coverage_pct}% covered`)}
+        ${stat("Beta, 2y history", best.beta==null?"–":best.beta.toFixed(2),
+          "includes everything you have sold")}
+        ${stat("Volatility", V.vol_pct==null?"–":V.vol_pct.toFixed(0)+"%",
+          V.downside_pct!=null?`${V.downside_pct.toFixed(0)}% on the downside only`:"annualised")}
+        ${stat("Active return", best.active_return_pct==null?"–":pct(best.active_return_pct),
+          best.port_ann_pct!=null?`you ${pct(best.port_ann_pct)} · index ${pct(best.bench_ann_pct)}, a year`:"",
+          sgn(best.active_return_pct))}
+        ${stat("Best / worst day", V.best_day_pct==null?"–":
+          `<span class="pos">${pct(V.best_day_pct,1)}</span> <span class="sub">/</span> <span class="neg">${pct(V.worst_day_pct,1)}</span>`,
+          V.positive_days_pct!=null?`${V.positive_days_pct}% of days were up`:"")}
+      </div>
+
+      ${F.gap!=null&&Math.abs(F.gap)>=0.15?`<div class="note" style="margin-top:.8rem">
+        <b>The book you hold now is ${F.gap>0?"more":"less"} market-sensitive than the one you ran</b>
+        Beta today is ${F.beta.toFixed(2)} against ${best.beta.toFixed(2)} over the full history.
+        The history includes ${(DATA.closed_positions||[]).length} names you have already sold, so it
+        describes a portfolio that no longer exists. The forward number is the one to act on.</div>`:""}
+      ${F.missing_n?`<p class="sub" style="margin:.7rem 0 0">
+        ${F.missing_n} holding(s) have no beta — ${nameList(F.missing||[],4)} — so the forward figure
+        covers ${F.coverage_pct}% of your value.</p>`:""}
+    </div>
+    <div class="foot">
+      <b>Beta</b> is the slope of your return against the index; <b>R²</b> is how much of your
+      movement that slope actually explains. Both are measured over five trading days at a time: your
+      shares close in New York, the tracker in Frankfurt four and a half hours earlier, and one day of
+      each is not the same day. <b>Tracking error</b> is how far you wander from the index
+      in a year, and the <b>information ratio</b> is excess return per unit of that wandering — above
+      0.5 is respectable for a private investor, and it is the number that says whether picking shares
+      beats just buying the tracker.
+      ${M.dropped_days?` ${M.dropped_days} day(s) were excluded: deposits, transfers between your
+      DEGIRO and flatex balances, and days when the account was too small to divide by.`:""}
+    </div></div>`;
+}
+
+/* ---------- risk by holding ---------- */
+
+function riskMapPanels(){
+  const R=RISK;
+  if(!R) return `<div class="panel"><h2>Risk by holding</h2><div class="pad sub">
+    Reading two years of prices<span class="blink">_</span></div></div><div></div>`;
+  if(!R.available) return `<div class="panel"><h2>Risk by holding</h2><div class="pad">
+    <div class="note"><b>Not measured</b>${esc(R.why||"no answer")}</div></div></div><div></div>`;
+
+  const B=R.book, rows=RISK_ALL?R.rows:R.rows.slice(0,12);
+  const max=Math.max(...R.rows.map(r=>Math.max(r.weight,r.risk)),1);
+  const row=r=>`<div class="rrow">
+      <span class="rn" title="${esc(r.name)}"><a href="/t/${encodeURIComponent(r.t)}">${esc(r.label)}</a></span>
+      <span class="rb" title="weight ${r.weight.toFixed(1)}% · share of risk ${r.risk.toFixed(1)}%">
+        <i style="width:${(r.weight/max*100).toFixed(1)}%"></i>
+        <i class="${r.risk<0?"off":"r"}" style="width:${(Math.abs(r.risk)/max*100).toFixed(1)}%"></i></span>
+      <span>${r.weight.toFixed(1)}%</span>
+      <span><b>${r.risk.toFixed(1)}%</b></span>
+      <span class="${r.ratio>=1.5?"warnc":r.ratio<=0.5?"dim":""}">${r.ratio==null?"–":r.ratio.toFixed(1)+"×"}</span>
+      <span class="dim">${r.vol.toFixed(0)}%</span></div>`;
+
+  const grp=(name,g)=>`<div class="rgrp"><span class="gn">${name}</span>
+      <span class="dim">${g.weight.toFixed(0)}%</span><span><b>${g.risk.toFixed(0)}%</b></span></div>`;
+  const cl=(R.clusters||[]).slice(0,6).map(c=>grp(
+    `${c.labels.slice(0,4).map(esc).join(", ")}${c.labels.length>4?` <span class="sub" title="${esc(c.labels.slice(4).join(", "))}">+${c.labels.length-4}</span>`:""}`, c)).join("");
+  const sec=(R.sectors||[]).filter(g=>g.weight>=1).slice(0,7).map(g=>grp(esc(g.label), g)).join("");
+
+  const S=R.style;
+  const smax=S?Math.max(...S.rows.map(x=>Math.abs(x.share||0)), S.own, 1):1;
+  const srow=(name,share,what,t)=>`<div class="srow" title="${esc(what||"")}">
+      <span>${esc(name)}</span>
+      <span class="sbar"><u></u><i class="${share<0?"neg":""}" style="${share>=0?`left:25%;width:${(share/smax*75).toFixed(1)}%`:`right:75%;width:${(Math.min(-share/smax*75,25)).toFixed(1)}%`}"></i></span>
+      <span class="${t!=null&&Math.abs(t)<2?"dim":""}">${share.toFixed(0)}%</span></div>`;
+
+  return `<div class="panel"><h2>Risk by holding
+      <span class="hint">today's holdings at today's weights, a year of five-day returns to ${dmy(R.asof)}</span></h2>
+    <div class="pad">
+      <ul class="rsay">${(R.say||[]).map(s=>`<li>${esc(s)}</li>`).join("")}</ul>
+      <div class="rrow hd"><span class="rn">Holding</span><span style="text-align:left">
+        <i class="swatch" style="display:inline-block;background:var(--ink-soft);vertical-align:middle"></i> weight
+        <i class="swatch" style="display:inline-block;background:var(--s1);vertical-align:middle;margin-left:.5rem"></i> share of risk</span>
+        <span>Weight</span><span>Risk</span><span title="Share of risk divided by weight">Ratio</span>
+        <span title="How much the share itself swings in a year, in euros">Swing</span></div>
+      ${rows.map(row).join("")}
+      ${R.rows.length>12?`<div style="margin-top:.5rem"><button class="btn" id="riskAll">${RISK_ALL?"Show the top 12":`Show all ${R.rows.length}`}</button></div>`:""}
+      ${(R.skipped||[]).length?`<p class="sub" style="margin:.6rem 0 0">Not measured: ${R.skipped.map(x=>`${esc(x.name)} (${esc(x.why)})`).join(", ")}.</p>`:""}
+    </div>
+    <div class="foot"><b>Share of risk</b> is each holding's part of how much the whole book swings: its weight,
+      times how much it swings, times how closely it moves with everything else you own. The shares add
+      up to 100%, and a holding that tends to move against the rest comes out below zero. Measured in
+      euros on five-day returns over the past year, with correlations pulled a fifth of the way toward
+      their average because ${R.n} names on fifty independent weeks is a noisy sample. It describes a calm
+      year: in a sell-off shares move together more than this.</div></div>
+
+  <div class="panel"><h2>Where the risk sits <span class="hint">money · risk · <a href="/m/SPLC">the supply chain behind it ›</a> · <a href="/m/RRG">rotation ›</a></span></h2>
+    <div class="pad">
+      <div class="stats">
+        ${stat("Book swing", B.vol_pct.toFixed(0)+"%", "a year, today's holdings")}
+        ${stat("Average holding", B.avg_vol_pct.toFixed(0)+"%", "each on its own")}
+        ${stat("Independent bets", B.bets==null?"–":"≈ "+B.bets.toFixed(0), `from ${R.n} holdings`)}
+        ${stat("Top five", B.top5_risk.toFixed(0)+"%", `of the risk, ${B.top5_weight.toFixed(0)}% of the money`)}
+      </div>
+      ${cl?`<div class="cgap">Move together</div>
+        ${R.say_group?`<p class="sub sans" style="margin:0 0 .3rem;line-height:1.5;color:var(--ink-mid)">${esc(R.say_group)}</p>`:""}${cl}`:""}
+      <div class="cgap">By sector</div>${sec}
+      ${S?`<div class="cgap">What the book bets on · share of its swings</div>
+        ${R.say_style?`<p class="sub sans" style="margin:0 0 .3rem;line-height:1.5;color:var(--ink-mid)">${esc(R.say_style)}</p>`:""}
+        ${S.rows.map(x=>srow(x.name, x.share||0, `${x.what} · loading ${x.beta>0?"+":""}${x.beta.toFixed(2)}, t ${x.t}`, x.t)).join("")}
+        ${srow("Your shares' own", S.own, "what none of the above explains")}`:""}
+    </div>
+    <div class="foot"><b>Move together</b> groups holdings by how they actually moved, whatever sector they are
+      filed under (average correlation of ${R.link} or more; the average pair here is ${R.avg_corr}).
+      ${S?`<b>What the book bets on</b> regresses ${S.weeks} weeks of the book on world shares, the dollar and
+      seven style spreads measured with US-listed funds; together they explain ${S.r2.toFixed(0)}%, the market
+      alone ${S.r2_market.toFixed(0)}%. Grey rows are not statistically distinguishable from zero.`:""}</div></div>
+  ${tailPanel(R)}`;
+}
+
+/* A bad day, a bad week (build 41): value at risk and expected shortfall of
+   today's book, replayed over two years in euros (riskmap.tail). ES leads:
+   the 95% and 99% VaR say what the volatility already does, the tail beyond
+   them does not. */
+function tailPanel(R){
+  const T=R.tail;
+  if(!T) return R.tail_error?`<div class="panel" style="grid-column:1/-1"><h2>A bad day, a bad week</h2><div class="pad">
+    <div class="note"><b>Not measured</b>${esc(R.tail_error)}</div></div></div>`:"";
+  const D=T.day, W=T.week, pc=(b,k)=>b.pct?` · ${b.pct[k].toFixed(1)}%`:"";
+  const cell=(b,k)=>`<td>${eur(b[k])}<span class="sub">${b.pct?" "+b.pct[k].toFixed(1)+"%":""}</span></td>`;
+  const line=(lab,b)=>`<tr><td class="l" style="white-space:nowrap">${lab}</td>${cell(b,"var95")}${cell(b,"var99")}${cell(b,"es975")}${cell(b,"es99")}${cell(b,"worst")}</tr>`;
+  const norm=(lab,b)=>`<tr class="sub" title="${lab}: what a normal curve with the book's volatility would give"><td class="l" style="white-space:nowrap">if normal</td><td>${eur(b.normal.var95)}</td><td>${eur(b.normal.var99)}</td>
+    <td>${eur(b.normal.es975)}</td><td>${eur(b.normal.es99)}</td><td></td></tr>`;
+  const mx=Math.max(...(W.drivers||[]).map(x=>x.share||0),1);
+  const drv=(W.drivers||[]).map(x=>`<div class="srow" style="grid-template-columns:minmax(120px,1fr) 1.4fr 64px" title="${esc(x.label)}: ${x.weight.toFixed(1)}% of the money, ${(x.share||0).toFixed(1)}% of a 1-in-40 week's loss">
+      <span><a href="/t/${encodeURIComponent(x.t)}">${esc(x.label)}</a> <span class="sub">${x.weight.toFixed(1)}%</span></span>
+      <span class="sbar"><i style="left:0;width:${((x.share||0)/mx*100).toFixed(1)}%"></i></span>
+      <span>${eur(x.loss)}</span></div>`).join("");
+  const eps=(W.episodes||[]).map(e=>`<div class="rgrp"><span class="gn">the week to ${dmy(e.end)}</span>
+      <span>${eur(e.loss)}</span><span class="dim">${e.pct==null?"":e.pct.toFixed(1)+"%"}</span></div>`).join("");
+  const fat=W.normal.es99?W.es99/W.normal.es99:null;
+  return `<div class="panel" style="grid-column:1/-1"><h2>A bad day, a bad week
+      <span class="hint">today's book replayed over two years of prices, in euros, ${dmy(T.from)} to ${dmy(T.to)}</span></h2>
+    <div class="pad">
+      <div class="stats">
+        ${stat("Bad day", eur(D.var95), `one day in twenty loses more${pc(D,"var95")}`)}
+        ${stat("Bad week", eur(W.var95), `one week in twenty loses more${pc(W,"var95")}`)}
+        ${stat("1-in-40 week", eur(W.es975), `what such a week costs on average${pc(W,"es975")}`)}
+        ${stat("Worst week replayed", eur(W.worst), `the week to ${dmy(W.worst_d)}${pc(W,"worst")}`)}
+      </div>
+      <div class="btabwrap" style="margin-top:.6rem"><table class="btab"><thead><tr><th class="l"></th>
+        <th title="value at risk: the loss exceeded one time in twenty">VaR 95%</th><th title="the loss exceeded one time in a hundred">VaR 99%</th>
+        <th title="expected shortfall: the average of the worst 2.5%">ES 97.5%</th><th title="the average of the worst 1%">ES 99%</th><th>Worst</th></tr></thead><tbody>
+        ${line("A day",D)}${norm("A day",D)}${line("A week",W)}${norm("A week",W)}</tbody></table></div>
+      <div class="grid2" style="margin-top:.4rem">
+        <div><div class="cgap">Who carries a 1-in-40 week · its average loss</div>${drv}</div>
+        <div><div class="cgap">The worst weeks, replayed · loss</div>${eps}</div>
+      </div>
+    </div>
+    <div class="foot"><b>VaR</b> (value at risk) is the loss a day or a week exceeds one time in twenty, or one in a hundred;
+      <b>ES</b> (expected shortfall) is the average of the losses beyond that line, which is what you would actually be living
+      through. Both are today's holdings at today's values played through every day and every five days of the past two years,
+      in euros, a turbo as the share it tracks at its exposure and never losing more than it is worth (a knock-out inside the
+      week is not modelled beyond that). Percentages are of your own money, ${eur(T.own_eur)}: holdings worth
+      ${eur(T.value_eur)}${T.cash_eur<0?`, less ${eur(-T.cash_eur)} borrowed on margin, which a fall does not shrink`:""}.
+      Up to the 1-in-100 line the losses are close to what the book's volatility implies; beyond it they are not${fat?`: the
+      worst 1% of weeks cost ${fat.toFixed(2)} times the normal-curve figure`:""}. Two years hold one real crash, April 2025, so
+      the 1-in-100 figures are mostly that week replayed${W.last_year_es975?`; over the last year alone a 1-in-40 week would be
+      ${eur(W.last_year_es975)}, which is why a calm year is not the measure`:""}. The holdings were chosen with these two years
+      in view, which flatters any replay of them.</div></div>`;
+}
+
+function wireRiskMap(){
+  const b=$("#riskAll");
+  if(b) b.onclick=()=>{ RISK_ALL=!RISK_ALL; $("#riskmap").innerHTML=riskMapPanels(); wireRiskMap(); };
+}
+
+/* ---------- cost drag ---------- */
+
+function costPanel(){
+  const K=DATA.costs||{}, T=DATA.totals;
+  if(K.drag_bps==null) return `<div class="panel"><h2>Cost drag</h2><div class="pad sub">
+    Not enough history to annualise ${eur(K.friction_eur||0)} of costs.</div></div>`;
+  return `<div class="panel"><h2>Cost drag <span class="hint">what friction costs you a year</span></h2>
+    <div class="pad">
+      <div class="stats">
+        ${stat("Annual drag", `${K.drag_bps.toFixed(0)} bps`,
+          `${K.drag_pct.toFixed(2)}% of capital, every year`, "neg")}
+        ${stat("Of your return", K.share_of_gross_return_pct==null?"–":
+          K.share_of_gross_return_pct.toFixed(0)+"%",
+          K.share_of_gross_return_pct==null?"return too low to express":
+          `of the ${pct((T.xirr||0)+K.drag_pct,1)} you earned before costs`, "neg")}
+        ${stat("Turnover", K.turnover_pct==null?"–":K.turnover_pct.toFixed(0)+"%",
+          "of the book traded a year")}
+      </div>
+      <div style="margin-top:.85rem">
+        <div class="kv"><span>Fees and commission</span><span class="neg">${eur(-K.account_fees_eur,2)}</span></div>
+        ${K.outside_fees_eur?`<div class="kv"><span>Fees on trades entered by hand</span><span class="neg">${eur(-K.outside_fees_eur,2)}</span></div>`:""}
+        <div class="kv"><span>AutoFX spread</span><span class="neg">${eur(-K.autofx_eur,2)}</span></div>
+        <div class="kv"><span>Margin interest</span><span class="neg">${eur(-K.interest_eur,2)}</span></div>
+        <div class="kv"><span><b>Total, ${K.years} years</b></span><span class="neg"><b>${eur(-K.friction_eur,2)}</b></span></div>
+        <div class="kv"><span>Average capital at work</span><span>${eur(K.avg_capital_eur)}</span></div>
+      </div>
+    </div>
+    <div class="foot">Measured against the <b>${esc(K.avg_capital_basis||"")}</b>, not against today's
+      balance — money deposited last month has not been at risk all along.
+      ${K.total_pct_of_capital!=null?`Cumulatively ${K.total_pct_of_capital.toFixed(1)}% of capital.`:""}</div>
+  </div>`;
+}
+
+/* ---------- contribution to return ---------- */
+
+function contributionPanel(){
+  const C=DATA.contribution||{};
+  const items=C.items||[];
+  if(!items.length) return "";
+  const top=items.slice(0,8), bot=items.slice(-5).filter(i=>i.total_eur<0).reverse();
+  const shown=[...top,...bot.filter(b=>!top.includes(b))];
+  const max=Math.max(...shown.map(i=>Math.abs(i.total_eur)),1);
+
+  const row=i=>{
+    const w=Math.abs(i.total_eur)/max*50;        // half-width, zero in the middle
+    const up=i.total_eur>=0;
+    return `<div class="crow">
+      <span class="cn" title="${esc(i.name)}">${esc(i.name)}</span>
+      <span class="cbar"><u></u><i class="${up?"":""}" style="${up?`left:50%;`:`right:50%;`}
+        width:${w}%;background:var(${up?"--gain":"--loss"})"></i></span>
+      <span class="ce ${sgn(i.total_eur)}">${eur(i.total_eur,0)}</span>
+      <span class="cp">${i.points==null?"–":pct(i.points,1)}</span>
+    </div>`;};
+
+  return `<div class="panel"><h2>Contribution to return
+      <span class="hint">${C.winners} up, ${C.losers} down · realised + unrealised + dividends</span></h2>
+    <div class="pad">
+      <div class="cgap">Made the money</div>
+      ${top.map(row).join("")}
+      ${bot.length?`<div class="cgap">Cost the money</div>${bot.map(row).join("")}`:""}
+      ${C.top_share_pct!=null?`<p class="sub" style="margin:.8rem 0 0;line-height:1.55">
+        Your top three names are ${eur(C.top_eur)} of the ${eur(C.named_eur)} you have made —
+        <b>${C.top_share_pct.toFixed(0)}%</b> of the result from
+        ${(3/Math.max(items.length,1)*100).toFixed(0)}% of the names.</p>`:""}
+    </div>
+    <div class="foot">
+      Each line is what that holding put into, or took out of, your pocket: unrealised P&amp;L plus
+      everything realised on it plus dividends received. The percentages are points of total return on
+      ${eur(C.denominator_eur)} of capital, so they add up to it.
+      ${C.reconciles
+        ? `Named positions account for ${eur(C.named_eur)} of ${eur(C.profit_eur)} total profit; the
+           remaining ${eur(C.residual_eur)} is ${esc(C.residual_note)}${
+           C.unexplained_eur!=null&&Math.abs(C.unexplained_eur)>=0.5
+             ? `, of which ${eur(C.unexplained_eur,2)} is rounding and FX on fees converted at two
+                different rates` : ""}.`
+        : `<span style="color:var(--loss)">These do not reconcile — ${eur(C.unexplained_eur??C.residual_eur)}
+           is unaccounted for against ${eur(C.profit_eur)} of profit, beyond the
+           ${eur(C.residual_expected_eur)} of interest and fees that should be left over.
+           Treat the ranking as indicative and tell me.</span>`}
+    </div></div>`;
+}
+
+/* ---------- year by year ---------- */
+
+function yearPanel(){
+  const Y=DATA.years||{}, rows=Y.rows||[];
+  if(!rows.length || !Y.total) return "";
+  const cols=[...rows, Y.total], H=Y.headline||{}, now=String(new Date().getFullYear());
+  const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const day=d=>{ const m=String(d).match(/^(\d{4})-(\d{2})-(\d{2})/); return m?`${+m[3]} ${MON[+m[2]-1]}`:""; };
+  const when=c=> c.year==="all" ? `since ${day(c.from)} ${c.from.slice(0,4)}`
+    : (c===rows[0] && c.from.slice(5)>"01-07") ? `from ${day(c.from)}`
+    : c.year===now ? `to ${day(c.to)}` : "the whole year";
+  const cls=c=>c.year==="all"?"all":"";
+  const E=v=>v==null?"–":eur(v), P=v=>v==null?"–":pct(v);
+  const pts=v=>v==null?"–":`${v>=0?"+":""}${v.toFixed(1)} pts`;
+  const line=(label, f, o={})=>`<tr class="${o.key?"key":""}"><td class="l" ${o.tip?`title="${esc(o.tip)}"`:""}>${label}</td>${
+    cols.map(c=>{ const [txt, sign]=f(c); return `<td class="${cls(c)} ${o.plain?"":sgn(sign)}">${txt}</td>`; }).join("")}</tr>`;
+  const group=t=>`<tr class="grp"><td colspan="${cols.length+1}">${t}</td></tr>`;
+  const money=k=>c=>[E(c[k]), c[k]];
+  const hold=k=>c=>{ const a=c[k]||[]; if(!a.length) return ["–", null];
+    return [`<span title="${esc(a.map(x=>`${x.name}: ${eur(x.eur)}`).join(" · "))}">${esc(a[0].t)} <span class="sub">${eur(a[0].eur)}</span></span>`, a[0].eur]; };
+  const off=cols.some(c=>Math.abs(c.residual_eur||0)>=1);
+  const bench=esc(Y.benchmark||"the benchmark");
+
+  let more="";
+  if(H.gap_eur!=null && Math.abs(H.gap_eur)>=1){
+    const bits=[];
+    if(Math.abs(H.leveraged_eur||0)>=1) bits.push(`values your ${H.leveraged_n} open leveraged position${H.leveraged_n===1?"":"s"} ${
+      H.lev_mode==="zero"?"at zero":"by today's rule"} rather than at the last price you traded them, which ${
+      H.leveraged_eur>0?"takes off":"adds"} ${eur(Math.abs(H.leveraged_eur))}`);
+    if(Math.abs(H.prices_eur||0)>=1) bits.push(`uses live prices rather than the last close, which ${
+      H.prices_eur>0?"takes off":"adds"} ${eur(Math.abs(H.prices_eur))}`);
+    more=` Since the start this table makes <b>${eur(Y.total.result_eur)}</b> and the Total return tile says
+      <b>${eur(H.profit_eur)}</b>: the tile ${bits.join(", and ")}.`;
+  }
+
+  return `<div class="panel" id="years"><h2>Year by year
+      <span class="hint">each calendar year on its own</span></h2>
+    <div class="pad"><div class="btabwrap"><table class="btab ytab"><thead><tr><th class="l"></th>${
+      cols.map(c=>`<th class="${cls(c)}">${c.year==="all"?"All years":c.year}<small>${when(c)}</small></th>`).join("")}</tr></thead><tbody>
+      ${group("The year")}
+      ${line("Value at the start", money("start_eur"), {plain:true})}
+      ${line("Paid in, net", money("paid_in_eur"), {plain:true, tip:"Deposits less withdrawals, plus what positions entered by hand cost"})}
+      ${line("Value at the end", money("end_eur"), {plain:true})}
+      ${line("Result", money("result_eur"), {key:true, tip:"Value at the end, less the value at the start, less what you paid in: what the account gained on its own"})}
+      ${line("Return", c=>[P(c.twr_pct), c.twr_pct], {key:true, tip:"Time-weighted: each day's return with that day's deposits taken out, chained. This year's figure is the Year to date tile; all years together is the TWR"})}
+      ${group("Against "+bench)}
+      ${line("The tracker", c=>[P(c.bench_pct), c.bench_pct], {tip:"The tracker's own price change over the same days, in euros"})}
+      ${line("Ahead or behind", c=>[pts(c.ahead_pts), c.ahead_pts], {key:true, tip:"Your return less the tracker's, in percentage points"})}
+      ${line("Same euros in the tracker", money("bench_result_eur"), {tip:"What the same deposits, on the same days, would have made in the tracker"})}
+      ${line("Ahead or behind, in euros", money("ahead_eur"))}
+      ${group("Where the result came from")}
+      ${line("Realised on sales", money("realised_eur"), {tip:"Profit and loss on what was sold during the year, after costs"})}
+      ${line("Change in unrealised", money("unreal_change_eur"), {tip:"How much the paper gain on what you still held grew or shrank. A sale moves a gain from this line to the one above, so it can be negative in a good year"})}
+      ${line("Dividends, after tax", money("dividends_eur"))}
+      ${line("Interest and account fees", money("costs_eur"), {tip:"Margin interest and the fees that belong to no trade (connection fees). Commission is inside the two lines at the top"})}
+      ${cols.some(c=>Math.abs(c.other_eur||0)>=0.5)?line("Credits from DEGIRO", money("other_eur")):""}
+      ${off?line(`<span style="color:var(--warn)">Not accounted for</span>`, money("residual_eur"), {tip:"What the lines above do not explain. It should be cents"}):""}
+      ${group("Along the way")}
+      ${line("Unrealised at the end", money("unreal_end_eur"))}
+      ${line("Worst fall from a high", c=>[c.drawdown_pct==null?"–":pct(c.drawdown_pct,1), c.drawdown_pct], {tip:"The deepest drop from an earlier high inside the year, measured on returns so that a deposit cannot fill it in"})}
+      ${line("Trades", c=>[`<span title="${c.buys} bought, ${c.sells} sold">${c.trades}</span>`, null], {plain:true})}
+      ${line("Commission and AutoFX", c=>[E(-c.trading_costs_eur), -c.trading_costs_eur], {tip:"Already inside the realised and unrealised lines: they are part of what a position cost. Shown so the year's trading bill is visible"})}
+      ${line("Best holding", hold("best"), {tip:"What it was worth at the end, less what it was worth at the start, less what you put into it, plus its dividends"})}
+      ${line("Worst holding", hold("worst"))}
+    </tbody></table></div></div>
+    <div class="foot"><b>Result</b> is euros; <b>Return</b> takes each deposit out on the day it arrived, which is
+      what makes it comparable with the tracker and with other years. The lines under
+      <b>Where the result came from</b> add up to the result${off?"":", to the euro"}. Everything is read off the same
+      daily line as the curve: what you held at each close, with leveraged products at the last price you traded them.${more}</div>
+  </div>`;
+}
+
+/* ---------- trading discipline ---------- */
+
+function disciplinePanel(){
+  const B=DATA.discipline||{};
+  if(!B.enough) return `<div class="panel"><h2>Trading record</h2><div class="pad sub">
+    ${esc(B.why||"No completed round trips yet.")}</div></div>`;
+  const edgeGood=B.edge!=null&&B.edge>0;
+  return `<div class="panel"><h2>Trading record
+      <span class="hint">${B.n} completed round trips</span></h2>
+    <div class="pad">
+      <div class="stats">
+        ${stat("Hit rate", B.hit_rate_pct.toFixed(0)+"%", `${B.wins} won, ${B.losses} lost`)}
+        ${stat("Payoff", B.payoff==null?"–":B.payoff.toFixed(2)+"×",
+          `${eur(B.avg_win_eur,0)} won vs ${eur(-B.avg_loss_eur,0)} lost, on average`)}
+        ${stat("Per trade", eur(B.expectancy_eur,0), `${eur(B.total_realised_eur,0)} over ${B.n} trips`,
+          sgn(B.expectancy_eur))}
+        ${stat("Break-even", B.breakeven_hit_pct==null?"–":B.breakeven_hit_pct.toFixed(0)+"%",
+          B.edge==null?"":`you are ${Math.abs(B.edge).toFixed(0)} points ${edgeGood?"above":"below"} it`,
+          edgeGood?"pos":"neg")}
+      </div>
+
+      <div style="margin-top:.9rem">
+        <div class="kv"><span>Winners held, typically</span><span>${B.median_hold_win??"–"} days</span></div>
+        <div class="kv"><span>Losers held, typically</span><span>${B.median_hold_loss??"–"} days</span></div>
+        <div class="kv"><span>Best trip</span><span class="pos">${esc((B.best?.name||"").slice(0,26))} ${eur(B.best?.pnl_eur,0)}</span></div>
+        <div class="kv"><span>Worst trip</span><span class="neg">${esc((B.worst?.name||"").slice(0,26))} ${eur(B.worst?.pnl_eur,0)}</span></div>
+      </div>
+
+      ${B.disposition_ratio!=null&&B.disposition_ratio>1.3?`<div class="note" style="margin-top:.8rem">
+        <b>You hold losers ${B.disposition_ratio.toFixed(1)}× longer than winners</b>
+        ${B.median_hold_loss} days against ${B.median_hold_win}. That is the disposition effect: selling
+        what is up to book the win, and waiting for what is down to come back. It is the most common
+        way a decent stock picker still ends up with a mediocre return.</div>`:""}
+
+      ${B.open_losers?`<p class="sub" style="margin:.8rem 0 0;line-height:1.55">
+        These count only positions you have <b>closed</b>. You are still holding ${B.open_losers}
+        position(s) showing ${eur(B.open_unrealised_loss_eur,0)} of unrealised loss against
+        ${B.open_winners} in profit — so a good hit rate here may partly mean the losers have not been
+        sold yet.</p>`:""}
+    </div>
+    <div class="foot">A round trip is one complete episode of owning something — bought, later sold out
+      entirely — not one sale, so scaling out of a winner in four pieces still counts once.
+      ${B.partial_sales_eur ? `A further <b>${eur(B.partial_sales_eur)}</b> was realised by trimming
+      positions you still hold; that is in your realised total but not in these statistics, because a
+      position still running cannot be scored as a win or a loss yet.` : ""}</div>
+  </div>`;
+}
+
+// A warning that lists 68 names is not a warning, it is a wall. Show a few and
+// put the rest behind a disclosure.
+function nameList(names, keep=5){
+  const a=names.slice(0,keep).map(esc).join(", ");
+  if(names.length<=keep) return a;
+  return `${a} <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--accent)">
+    and ${names.length-keep} more</summary><div class="sub" style="margin-top:.3rem">${names.slice(keep).map(esc).join(", ")}</div></details>`;
+}
+
+function dataQualityInline(){
+  const q=DATA.data_quality, C=DATA.curve, n=(C.carried_at_last_trade||[]).length
+        + (q.unpriced||[]).length;
+  if(!n) return "";
+  return `<details style="order:9;flex:1 1 100%"><summary style="cursor:pointer;color:var(--warn);font-size:.72rem">
+    ${n} holding(s) without a live price — click for detail</summary>
+    <div class="sub" style="margin-top:.35rem">${dataQuality(true)}</div></details>`;
+}
+
+function dataQuality(inline){
+  const q=DATA.data_quality, C=DATA.curve, msgs=[];
+  if(C.no_history) msgs.push(`<b>No usable price history</b>
+     The equity curve, TWR and drawdown need daily closes and none could be fetched.
+     Press Refresh once your connection is up; figures based on your ledger alone are unaffected.`);
+  if(q.unpriced?.length) msgs.push(`<b>${q.unpriced.length} position${q.unpriced.length>1?"s":""} carried at last trade price</b>
+     ${nameList(q.unpriced)}.
+     Click the row to set a ticker or a manual price.`);
+  if(!q.has_deposits) msgs.push(`<b>No deposits found in the ledger</b>
+     Returns are measured against invested capital rather than account cashflow.`);
+  if(C.carried_at_last_trade?.length) msgs.push(`<b>${C.carried_at_last_trade.length} holding(s) have no price history</b>
+     ${nameList(C.carried_at_last_trade)} — carried at your last trade price in the curve, so the
+     line never breaks. Click the row to set a ticker, or press Enrich.`);
+  if(q.orphan_sells) msgs.push(`<b>${q.orphan_sells} sell(s) with no matching buy</b> Your history starts later than these trades.`);
+  if(!msgs.length) return "";
+  const body = msgs.join('<hr style="border:0;border-top:1px solid var(--warn);opacity:.4;margin:.5rem 0">');
+  return inline ? body : `<div class="note">${body}</div>`;
+}
+
+function barPanel(title, rows, hint){
+  if(!rows||!rows.length) return `<div class="panel"><h2>${title}</h2><div class="pad sub">No data — press Enrich.</div></div>`;
+  const max=Math.max(...rows.map(r=>r.pct));
+  return `<div class="panel"><h2>${title}${hint?`<span class="hint">${hint}</span>`:""}</h2>
+    <div class="pad bars">${rows.slice(0,8).map(r=>`
+      <div class="brow"><div><div class="blabel" title="${esc(r.label)}">${esc(r.label)}</div>
+        <div class="btrack"><div class="bfill" style="width:${(r.pct/max*100).toFixed(1)}%"></div></div></div>
+        <div class="bval">${r.pct.toFixed(1)}%</div></div>`).join("")}</div></div>`;
+}
+
+/* ================= chart =================
+   The equity curve zooms: drag across it to pick a stretch, or a preset; the
+   line and its axes rescale to that stretch, double-click shows everything.
+   The values under the pointer read out above the chart's corner, not in a
+   box over the lines; with the pointer away it gives the stretch's return. */
+let CZ = null;                    // the window, {i0, i1, k}: indices into the series; null is all of it
+const CZ_PRESETS = [["1M", 30], ["3M", 91], ["6M", 182], ["YTD", "ytd"], ["1Y", 365], ["All", null]];
+try { const k = localStorage.getItem("pf_curve_range"); if (k) CZ = { k: k === "ytd" ? "ytd" : +k }; } catch {}
+const curveSeries = () => ((DATA && DATA.curve && DATA.curve.series) || []).filter(p => p.v != null);
+const CG = { W: 1000, PL: 58, PR: 66, PT: 14 };   // the geometry the pointer is mapped back through
+
+function presetWindow(S, k){
+  if(k == null || k === "" || !S.length) return null;
+  const last = S[S.length - 1].d;
+  let from;
+  if(k === "ytd") from = last.slice(0, 4) + "-01-01";
+  else { const t = new Date(last + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - (+k)); from = t.toISOString().slice(0, 10); }
+  const i0 = S.findIndex(p => p.d >= from);
+  return i0 <= 0 ? null : { i0, i1: S.length - 1, k };
+}
+function curveWindow(S){
+  if(CZ && CZ.k != null && CZ.i0 == null){ const w = presetWindow(S, CZ.k); CZ = w; }
+  if(!CZ) return [0, S.length - 1];
+  return [Math.max(0, Math.min(S.length - 2, CZ.i0)), Math.max(1, Math.min(S.length - 1, CZ.i1))];
+}
+
+function curveSVG(C){
+  if(C.no_history) return `<div class="pad sub" style="min-height:150px">No price history available yet — the curve needs daily closes.</div>`;
+  // Filtering to v>0 here is how a legitimately flat or negative stretch turns
+  // into a hole in the line. Plot everything the backend sends.
+  const ALL = curveSeries();
+  if(ALL.length < 2) return `<div class="pad sub" style="min-height:150px">Not enough price history yet.</div>`;
+  const [a, b] = curveWindow(ALL);
+  const S = ALL.slice(a, b + 1);
+  const narrow = window.innerWidth < 760;
+  const W=1000,H=narrow?260:300,DH=narrow?56:70,PL=narrow?44:58,PR=narrow?44:66,PT=14,PB=18,GAP=16;
+  Object.assign(CG, { W, PL, PR, PT });
+  const vals=[]; S.forEach(p=>{vals.push(p.v); if(p.b!=null) vals.push(p.b);});
+  // the whole curve starts at zero; a stretch of it fills the height
+  let lo = CZ ? Math.min(...vals) : Math.min(...vals, 0), hi = Math.max(...vals);
+  const pad=(hi-lo)*0.08||1; lo-=pad; hi+=pad;
+  const x=i=>PL+(W-PL-PR)*(i/(S.length-1));
+  const y=v=>PT+(H-PT-PB)*(1-(v-lo)/(hi-lo));
+  // The fall from a high, on the return index (x) the backend chains: in euros a
+  // deposit fills in the very fall it arrives during. Peaks count from the start,
+  // so a zoomed stretch shows how far below its earlier high the book was.
+  let peak=0; const ddAll=ALL.map(p=>{const v=p.x??p.v; peak=Math.max(peak,v); return peak?(v/peak-1)*100:0;});
+  const dd = ddAll.slice(a, b + 1);
+  const ddMin=Math.min(...dd,-1);
+  const dy=v=>H+GAP+DH*(v/ddMin);
+  const path=sel=>{let d="",on=false;
+    S.forEach((p,i)=>{const v=sel(p); if(v==null||v===undefined){on=false;return;}
+      d+=(on?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)+" "; on=true;}); return d.trim();};
+  const ticks=[lo+(hi-lo)*0.02,lo+(hi-lo)*0.5,hi-(hi-lo)*0.02];
+  const kfmt = t => Math.abs(hi - lo) < 4000 ? (t / 1000).toFixed(1) + "k" : Math.round(t / 1000) + "k";
+  const gridY=ticks.map(t=>`<line x1="${PL}" y1="${y(t).toFixed(1)}" x2="${W-PR}" y2="${y(t).toFixed(1)}" stroke="var(--rule)" stroke-width="1"/>
+    <text x="${PL-7}" y="${(y(t)+3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--ink-soft)">${kfmt(t)}</text>`).join("");
+  const n=S.length, xt=narrow?[0,Math.floor(n/2),n-1]:[0,Math.floor(n/3),Math.floor(2*n/3),n-1];
+  // a short stretch is labelled by day, a long one by month
+  const days = (Date.parse(S[n-1].d) - Date.parse(S[0].d)) / 864e5;
+  const xl = d => days < 120 ? dmShort(d) : my(d);
+  const gridX=xt.map(i=>`<text x="${x(i).toFixed(1)}" y="${H-2}" text-anchor="middle" font-size="10" fill="var(--ink-soft)">${xl(S[i].d)}</text>`).join("");
+  const last=S[n-1], lastB=[...S].reverse().find(p=>p.b!=null);
+  const ddArea=`M${x(0).toFixed(1)} ${dy(0).toFixed(1)} `+dd.map((v,i)=>`L${x(i).toFixed(1)} ${dy(v).toFixed(1)}`).join(" ")+` L${x(n-1).toFixed(1)} ${dy(0).toFixed(1)} Z`;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H+GAP+DH+16}" role="img"
+      aria-label="Portfolio value against the same cashflows invested in the benchmark, with drawdown below.">
+    ${gridY}${gridX}
+    <path d="${ddArea}" fill="var(--loss)" opacity="0.16"/>
+    <line x1="${PL}" y1="${dy(0).toFixed(1)}" x2="${W-PR}" y2="${dy(0).toFixed(1)}" stroke="var(--rule-strong)" stroke-width="1"/>
+    <text x="${PL-7}" y="${(dy(ddMin)+3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--ink-soft)">${ddMin.toFixed(0)}%</text>
+    <text x="${PL-7}" y="${(dy(0)+3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--ink-soft)">0%</text>
+    <path d="${path(p=>p.b)}" fill="none" stroke="var(--s2)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="${path(p=>p.v)}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${lastB?`<circle cx="${x(S.indexOf(lastB)).toFixed(1)}" cy="${y(lastB.b).toFixed(1)}" r="3.5" fill="var(--s2)" stroke="var(--surface)" stroke-width="2"/>
+      <text x="${W-PR+7}" y="${(y(lastB.b)+3.5).toFixed(1)}" font-size="10.5" fill="var(--s2)" font-weight="600">${(lastB.b/1000).toFixed(1)}k</text>`:""}
+    <circle cx="${x(n-1).toFixed(1)}" cy="${y(last.v).toFixed(1)}" r="3.5" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/>
+    <text x="${W-PR+7}" y="${(y(last.v)+3.5).toFixed(1)}" font-size="${narrow?11:10.5}" fill="var(--s1)" font-weight="600">${(last.v/1000).toFixed(1)}k</text>
+    <rect id="csel" x="0" y="${PT}" width="0" height="${H-PT-PB}" fill="var(--accent)" opacity="0"/>
+    <circle id="cdotv" r="3.5" fill="var(--s1)" stroke="var(--surface)" stroke-width="1.5" opacity="0"/>
+    <circle id="cdotb" r="3.5" fill="var(--s2)" stroke="var(--surface)" stroke-width="1.5" opacity="0"/>
+    <line id="cross" x1="0" y1="${PT}" x2="0" y2="${H+GAP+DH}" stroke="var(--ink-soft)" stroke-width="1" opacity="0"/>
+  </svg>`;
+}
+
+/* The stretch's return: the book's time-weighted, from the return index; the
+   tracker's from the same cashflows, each day's value less that day's deposit. */
+function curvePeriod(ALL, a, b){
+  const p0 = ALL[a], p1 = ALL[b];
+  const twr = p0.x && p1.x ? (p1.x / p0.x - 1) * 100 : null;
+  let tb = 1, ok = true;
+  for(let i = a + 1; i <= b; i++){
+    const q = ALL[i], r = ALL[i - 1];
+    if(q.b == null || r.b == null || !r.b){ ok = false; break; }
+    tb *= (q.b - (q.f || 0)) / r.b;
+  }
+  return { twr, bench: ok ? (tb - 1) * 100 : null, from: p0.d, to: p1.d };
+}
+
+function curveReadout(p){
+  const el = $("#cread"); if(!el) return;
+  const sw = c => `<i class="sw" style="background:var(${c})"></i>`;
+  if(p){
+    el.innerHTML = `<b>${dmy(p.d)}</b> ${sw("--s1")}${eur(p.v)}${p.b != null ? ` ${sw("--s2")}${eur(p.b)} <span class="sub">gap ${eur(p.v - p.b)}</span>` : ""}`;
+    return;
+  }
+  const ALL = curveSeries(); if(ALL.length < 2) { el.innerHTML = ""; return; }
+  const [a, b] = curveWindow(ALL), P = curvePeriod(ALL, a, b);
+  el.innerHTML = `<span class="sub">${dmShort(P.from)} ${P.from.slice(0, 4)} – ${dmShort(P.to)} ${P.to.slice(0, 4)}</span>
+    ${sw("--s1")}<span class="${sgn(P.twr)}">${P.twr == null ? "–" : pct(P.twr, 1)}</span>
+    ${sw("--s2")}<span class="${sgn(P.bench)}">${P.bench == null ? "–" : pct(P.bench, 1)}</span>
+    <span class="sub">time-weighted</span>`;
+}
+
+function redrawCurve(){
+  const cw = $("#cw"); if(!cw) return;
+  cw.innerHTML = curveSVG(DATA.curve);
+  try { localStorage.setItem("pf_curve_range", CZ && CZ.k != null ? String(CZ.k) : ""); } catch {}
+  wireChart();
+}
+
+function wireChart(){
+  const wrap=$("#cw"); if(!wrap) return;
+  const svg=wrap.querySelector("svg.chart"); if(!svg) return;
+  const ALL = curveSeries(); if(ALL.length < 2) return;
+  const [a, b] = curveWindow(ALL), n = b - a + 1;
+  const { W, PL, PR } = CG;
+  const cross = svg.querySelector("#cross"), sel = svg.querySelector("#csel");
+  const dv = svg.querySelector("#cdotv"), db = svg.querySelector("#cdotb");
+  const xOf = i => PL + (W - PL - PR) * ((i - a) / (n - 1));
+  const at = ev => {
+    const r = svg.getBoundingClientRect();
+    const vx = (ev.clientX - r.left) / r.width * W;
+    const i = Math.round((vx - PL) / ((W - PL - PR) / (n - 1)));
+    return a + Math.max(0, Math.min(n - 1, i));
+  };
+  // the dots follow the lines: their y is read off the drawn paths' own scale
+  const yOf = (() => {
+    const vals = []; ALL.slice(a, b + 1).forEach(p => { vals.push(p.v); if(p.b != null) vals.push(p.b); });
+    const H = window.innerWidth < 760 ? 260 : 300, PT = 14, PB = 18;
+    let lo = CZ ? Math.min(...vals) : Math.min(...vals, 0), hi = Math.max(...vals);
+    const pad = (hi - lo) * 0.08 || 1; lo -= pad; hi += pad;
+    return v => PT + (H - PT - PB) * (1 - (v - lo) / (hi - lo));
+  })();
+  let drag = null;
+  const show = i => {
+    const p = ALL[i], px = xOf(i);
+    if(cross){ cross.setAttribute("x1", px); cross.setAttribute("x2", px); cross.setAttribute("opacity", "0.45"); }
+    if(dv){ dv.setAttribute("cx", px); dv.setAttribute("cy", yOf(p.v)); dv.setAttribute("opacity", "1"); }
+    if(db){ if(p.b != null){ db.setAttribute("cx", px); db.setAttribute("cy", yOf(p.b)); db.setAttribute("opacity", "1"); } else db.setAttribute("opacity", "0"); }
+    curveReadout(p);
+  };
+  const hide = () => { [cross, dv, db].forEach(e => e && e.setAttribute("opacity", "0")); curveReadout(null); };
+  svg.addEventListener("mousemove", ev => {
+    const i = at(ev); show(i);
+    if(drag){
+      drag.i1 = i;
+      const lo = Math.min(drag.i0, i), hi = Math.max(drag.i0, i);
+      sel.setAttribute("x", xOf(lo)); sel.setAttribute("width", Math.max(0, xOf(hi) - xOf(lo))); sel.setAttribute("opacity", "0.16");
+    }
+  });
+  svg.addEventListener("mousedown", ev => { if(ev.button !== 0) return; drag = { i0: at(ev), i1: at(ev) }; ev.preventDefault(); });
+  const up = () => {
+    if(!drag) return;
+    const lo = Math.min(drag.i0, drag.i1), hi = Math.max(drag.i0, drag.i1);
+    drag = null; sel.setAttribute("opacity", "0");
+    window.removeEventListener("mouseup", up);
+    if(hi - lo >= 3){ CZ = { i0: lo, i1: hi, k: null }; markPreset(); redrawCurve(); }
+  };
+  svg.addEventListener("mousedown", () => window.addEventListener("mouseup", up));
+  svg.addEventListener("mouseleave", () => { if(!drag) hide(); });
+  svg.addEventListener("dblclick", () => { CZ = null; markPreset(); redrawCurve(); });
+  // touch: the readout follows a finger; zooming is the presets
+  svg.addEventListener("touchmove", ev => { const t = ev.touches[0]; if(t) show(at(t)); }, { passive: true });
+  svg.addEventListener("touchend", hide);
+  $$("#czBar .seg").forEach(btn => btn.onclick = () => {
+    const k = btn.dataset.cz === "" ? null : (btn.dataset.cz === "ytd" ? "ytd" : +btn.dataset.cz);
+    CZ = k == null ? null : presetWindow(ALL, k);
+    markPreset(); redrawCurve();
+  });
+  markPreset();
+  curveReadout(null);
+}
+
+function markPreset(){
+  const k = CZ ? (CZ.k == null ? "drag" : String(CZ.k)) : "";
+  $$("#czBar .seg").forEach(b => b.classList.toggle("on", b.dataset.cz === k));
+}
+
+/* ================= tables ================= */
+const OPEN_COLS=[
+  {k:"name", t:"Position", l:true, f:r=>`<div class="nm"><b title="${esc(r.name)}">${esc(r.name)}</b>
+      ${r.ticker?`<a class="tk tklink" href="/t/${encodeURIComponent(r.ticker)}"
+        title="Open the page for ${esc(r.ticker)}">${esc(r.ticker)}</a>`
+        :`<span class="tk">${esc(r.underlying_ticker||"")}</span>`}
+      ${r.kind==="DERIVATIVE"?`<span class="chip deriv" title="Leveraged product on ${esc(r.underlying||"?")}">turbo</span>`:""}
+      ${r.kind==="ETF"?'<span class="chip">etf</span>':""}
+      ${r.excluded?'<span class="chip warnc" title="Leveraged product valued at 0 — change it in the Leveraged products panel">excluded</span>':""}
+      ${(r.stale && !r.excluded)?`<span class="chip warnc" title="No live quote — carried at ${esc(r.price_source)}">stale</span>`:""}
+      ${(!r.stale && r.price_source?.startsWith("modelled"))?`<span class="chip" title="${esc(r.price_source)} — repriced your actual trades to ${r.lev?.model?.error_pct ?? "?"}%">modelled</span>`:""}
+      <span class="edit" data-edit>edit</span></div>`},
+  {k:"qty", t:"Qty", f:r=>r.qty},
+  {k:"avg_price", t:"Avg cost", f:r=>r.avg_price.toFixed(2)+" "+r.currency},
+  {k:"price", t:"Last", f:r=>r.price.toFixed(2)},
+  {k:"day_pct", t:"Day %", f:r=>pct(r.day_pct) + dayTag(r.day_tag ? [r.day_tag] : []), c:r=>sgn(r.day_pct)},
+  {k:"day_eur", t:"Day €", f:r=>eur(r.day_eur,0), c:r=>sgn(r.day_eur)},
+  {k:"day_fx_eur", t:"of which FX", f:r=>eur(r.day_fx_eur,0), c:r=>sgn(r.day_fx_eur)},
+  {k:"last_pct", t:"Last session", c:r=>sgn(r.last_pct),
+   f:r=>r.last_pct==null?"–":`<span title="${r.last_date ? dayName(r.last_date) + ", the last session that finished" : ""}${r.last_eur!=null ? ": " + eur(r.last_eur,0) : ""}">${pct(r.last_pct)}</span>`},
+  {k:"value_eur", t:"Value €", f:r=>eur(r.value_eur)},
+  {k:"weight", t:"Weight", f:r=>r.weight.toFixed(1)+"%"},
+  {k:"unreal_eur", t:"Unrealised €", f:r=>eur(r.unreal_eur), c:r=>sgn(r.unreal_eur)},
+  {k:"unreal_pct", t:"Unreal %", f:r=>pct(r.unreal_pct), c:r=>sgn(r.unreal_pct)},
+  {k:"unreal_fx_eur", t:"of which FX", f:r=>eur(r.unreal_fx_eur,0), c:r=>sgn(r.unreal_fx_eur)},
+  {k:"xirr", t:"XIRR", c:r=>sgn(r.xirr),
+   f:r=>r.xirr!=null?pct(r.xirr,1):(r.xirr_suppressed?`<span class="sub" title="Held under 30 days — annualising would be meaningless">${pct(r.simple_return_pct)} raw</span>`:"–")},
+  {k:"held_days", t:"Held", f:r=>r.held_days==null?"–":r.held_days+"d"},
+  {k:"sector", t:"Sector", l:true, f:r=>esc(r.sector||"–")},
+];
+
+const CLOSED_COLS=[
+  {k:"name", t:"Position", l:true, f:r=>`<div class="nm"><b title="${esc(r.name)}">${esc(r.name)}</b>
+      <span class="tk">${esc(r.ticker||"")}</span>
+      ${r.kind==="DERIVATIVE"?'<span class="chip deriv">turbo</span>':""}
+      ${r.trips>1?`<span class="chip" title="${r.trips} separate round trips">${r.trips}×</span>`:""}</div>`},
+  {k:"qty", t:"Qty sold", f:r=>r.qty},
+  {k:"cost_eur", t:"Cost €", f:r=>eur(r.cost_eur)},
+  {k:"proceeds_eur", t:"Proceeds €", f:r=>eur(r.proceeds_eur)},
+  {k:"pnl_eur", t:"Realised €", f:r=>eur(r.pnl_eur), c:r=>sgn(r.pnl_eur)},
+  {k:"pnl_pct", t:"Realised %", f:r=>pct(r.pnl_pct), c:r=>sgn(r.pnl_pct)},
+  {k:"pnl_fx_eur", t:"of which FX", f:r=>eur(r.pnl_fx_eur,0), c:r=>sgn(r.pnl_fx_eur)},
+  {k:"fees_eur", t:"Fees €", f:r=>eur(-r.fees_eur,2), c:()=>"neg"},
+  {k:"opened", t:"Opened", f:r=>dmy(r.opened)},
+  {k:"closed", t:"Closed", f:r=>dmy(r.closed)},
+  {k:"held_days", t:"Held", f:r=>r.held_days+"d"},
+  {k:"xirr", t:"XIRR", f:r=>r.xirr==null?"–":pct(r.xirr,1), c:r=>sgn(r.xirr)},
+  {k:"sector", t:"Sector", l:true, f:r=>esc(r.sector||"–")},
+];
+
+const cellVal=(r,k)=> r[k];
+
+function buildTable(rows, cols, key){
+  const S=SORT[key];
+  const sorted=[...rows].sort((a,b)=>{
+    const A=cellVal(a,S.k),B=cellVal(b,S.k);
+    if(A==null)return 1; if(B==null)return -1;
+    return (typeof A==="string"? A.localeCompare(B) : A-B)*S.dir;});
+  return `<table><thead><tr>${cols.map(c=>
+      `<th class="${c.l?"l":""}" data-k="${c.k}" ${S.k===c.k?`aria-sort="${S.dir<0?"descending":"ascending"}"`:""}>${c.t}</th>`).join("")}</tr></thead>
+    <tbody>${sorted.map(r=>`<tr data-isin="${esc(r.isin)}">${cols.map(c=>
+      `<td data-k="${c.k}" class="${c.l?"l":""} ${c.c?c.c(r):""}">${c.f?c.f(r):r[c.k]}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+const openTable   = () => buildTable(DATA.positions, OPEN_COLS, "open");
+const closedTable = () => buildTable(DATA.closed_positions||[], CLOSED_COLS, "closed");
+
+function wireTabs(){
+  document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
+    TAB=b.dataset.tab; render();
+  });
+}
+function wireTable(){
+  // Three targets in one row, so the order matters: the edit chip and the
+  // ticker link are checked first, and anything else opens the detail popup.
+  $$("#tw tbody tr").forEach(tr => tr.onclick = e => {
+    if(e.target.closest("a.tklink")) return;           // let the link navigate
+    const isin = tr.dataset.isin;
+    if(e.target.closest("[data-edit]")){ e.preventDefault(); editInstrument(isin); return; }
+    positionModal(isin);
+  });
+  $$("#tw thead th").forEach(th => th.onclick = () => {
+    const k = th.dataset.k, S = SORT[TAB];
+    S.dir = (S.k === k) ? -S.dir : -1;
+    S.k = k;
+    $("#tw").innerHTML = TAB==="open"?openTable():closedTable();
+    wireTable();
+  });
+}
+
+/* ================= instrument editor ================= */
+function editInstrument(isin){
+  const src = TAB==="open" ? DATA.positions : DATA.closed_positions;
+  const r = (src||[]).find(x=>x.isin===isin) || (DATA.positions||[]).find(x=>x.isin===isin);
+  if(!r) return;
+  const isDeriv = r.kind==="DERIVATIVE";
+  openModal(`${esc(r.name)}<span class="sub" style="font-family:var(--f-mono)">${esc(isin)}</span>`,
+    `<div class="field"><label for="fTicker">${isDeriv ? "Tracks" : "Quote symbol"}</label>
+       <input type="text" id="fTicker" value="${esc(isDeriv ? (r.underlying_ticker||"") : (r.ticker||""))}" placeholder="${isDeriv?"the share's symbol, e.g. WDC":"e.g. MSFT or BMW.DE"}">
+       <span class="fh">${isDeriv
+          ? `Leveraged product on <b>${esc(r.underlying||"?")}</b>. The <b>share it tracks</b>, as a Yahoo symbol: the model prices the turbo from it. A turbo has no quote of its own. Its sector is inherited from that share.`
+          : `Yahoo symbol. European listings need the suffix: .AS Amsterdam, .DE Xetra, .L London.`}</span></div>
+
+     <div class="field"><label for="fPrice">Manual price</label>
+       <input type="number" step="any" id="fPrice" value="${r.manual_price ?? ""}" placeholder="${r.price?.toFixed?.(2) ?? ""} ${esc(r.currency||"")}">
+       <span class="fh">Used when no live quote exists. Enter the price in <b>${esc(r.currency||"EUR")}</b>. Leave blank to fall back to the last trade price.</span></div>
+
+     ${isDeriv && /TURBO/i.test(r.name||"") ? `<div class="field"><label for="fFin">Financing level now</label>
+       <input type="text" id="fFin" placeholder="paste DEGIRO's current name, or type the level${r.lev?.financing?.fn ? ` (model: ${r.lev.financing.fn.toFixed(4)})` : ""}">
+       <span class="fh">From DEGIRO's product page: the turbo's name there ends in <b>SL … FN … R … LV …</b> and changes every day. Paste it whole, or type the FN. Dated today.</span></div>` : ""}
+
+     <div class="field"><label for="fSector">Sector</label>
+       <input type="text" id="fSector" value="${esc(r.sector||"")}" placeholder="e.g. Technology">
+       <span class="fh">Overrides whatever the data provider says.</span></div>
+
+     <div class="field"><label for="fCountry">Country</label>
+       <input type="text" id="fCountry" value="${esc(r.country||"")}" placeholder="e.g. United States"></div>
+
+     <div id="editOut"></div>`,
+    `<span class="sub" id="editHint">Changes apply on save and take effect immediately.</span>
+     <button class="btn" id="editCancel">Cancel</button>
+     <button class="btn primary" id="editSave">Save</button>`);
+
+  $("#editCancel").onclick = closeModal;
+  $("#editSave").onclick = async () => {
+    const body={};
+    const t=$("#fTicker").value.trim(); if(t) body.ticker=t;
+    const p=$("#fPrice").value.trim();  if(p!=="") body.manual_price=parseFloat(p);
+    const s=$("#fSector").value.trim(); if(s) body.sector_override=s;
+    const c=$("#fCountry").value.trim();if(c) body.country_override=c;
+    const fin=($("#fFin")||{value:""}).value.trim();
+    if(!Object.keys(body).length && !fin){ $("#editOut").innerHTML=`<div class="note">Nothing changed.</div>`; return; }
+    $("#editSave").disabled=true; $("#editSave").textContent="Saving…";
+    try{
+      if(fin){
+        const rf=await fetch(`/api/pf/instrument/${encodeURIComponent(isin)}/financing`,{
+          method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({text:fin})});
+        const jf=await rf.json().catch(()=>({}));
+        // 404 or 405: the server running is older than this page (build 34)
+        if(rf.status===404||rf.status===405)
+          throw new Error("The terminal's server is older than this page: restart it (start-portfolio.bat) and try again.");
+        if(!rf.ok) throw new Error(jf.detail||`${rf.status}`);
+      }
+      if(Object.keys(body).length){
+        const r2=await fetch(`/api/pf/instrument/${encodeURIComponent(isin)}`,{
+          method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+        const j=await r2.json().catch(()=>({}));
+        if(!r2.ok) throw new Error(j.detail||`${r2.status}`);
+      }
+      closeModal(); await load();
+    }catch(e){
+      $("#editOut").innerHTML=`<div class="note err"><b>Could not save</b>${esc(e.message)}</div>`;
+      $("#editSave").disabled=false; $("#editSave").textContent="Save";
+    }
+  };
+}
+
+/* ================= import ================= */
+let HOLDINGS=[];
+
+async function importModal(){
+  openModal("Add transactions",
+    `<span class="tabs" id="impTabs" style="margin-bottom:.9rem">
+       <button data-t="file" aria-pressed="true">Import files</button>
+       <button data-t="hand" aria-pressed="false">Enter by hand</button>
+     </span>
+     <div id="impFile">
+       <div class="drop" id="drop">Drop <b>Transactions.csv</b> and <b>Account.csv</b> here<br>
+         <span class="sub">or</span>
+         <label style="color:var(--accent);cursor:pointer;text-decoration:underline">choose files<input type="file" id="file" multiple accept=".csv,text/csv" class="hide"></label>
+       </div>
+       <p class="sub" style="margin:.7rem 0 0">Both files matter. <b>Transactions.csv</b> has the trades;
+       <b>Account.csv</b> has dividends, fees, interest, deposits and currency conversions.
+       Nothing is written until you press Commit, and re-importing an overlapping period is safe.</p>
+       <div id="importOut"></div>
+     </div>
+     <div id="impHand" class="hide">
+       <p class="sub" style="margin:0 0 .8rem">For positions DEGIRO's exports cannot give you. A trade entered
+       here is not paid from your DEGIRO cash: what it costs counts as capital you put in on that date, and
+       what a sale brings in as capital taken out. A trade done at DEGIRO belongs in the CSV import instead.</p>
+       <div class="field"><label for="mKind">Type</label>
+         <select id="mKind"><option value="BUY">Buy</option><option value="SELL">Sell</option></select></div>
+
+       <div class="field"><label for="mIsin">Instrument</label>
+         <input list="mList" id="mIsin" placeholder="start typing a name, or paste an ISIN">
+         <datalist id="mList"></datalist>
+         <span class="fh" id="mHeld">Pick something you already hold, or enter a new ISIN.</span></div>
+
+       <div class="field hide" id="mNewWrap"><label for="mName">Name</label>
+         <input type="text" id="mName" placeholder="e.g. ASML HOLDING NV">
+         <span class="fh">New instrument — give it a name, and a ticker if you know one.</span></div>
+       <div class="field hide" id="mTickWrap"><label for="mTicker">Quote symbol</label>
+         <input type="text" id="mTicker" placeholder="e.g. ASML.AS"></div>
+
+       <div class="field"><label for="mDate">Trade date</label>
+         <input type="date" id="mDate"></div>
+       <div class="field"><label for="mQty">Quantity</label>
+         <input type="number" step="any" min="0" id="mQty" placeholder="4"></div>
+       <div class="field"><label for="mPrice">Price per unit</label>
+         <input type="number" step="any" min="0" id="mPrice" placeholder="165.00"></div>
+       <div class="field"><label for="mCcy">Currency</label>
+         <select id="mCcy"><option>EUR</option><option>USD</option><option>GBP</option><option>CHF</option></select></div>
+       <div class="field hide" id="mFxWrap"><label for="mFx">FX rate</label>
+         <input type="number" step="any" id="mFx" placeholder="leave blank to use the rate for that date">
+         <span class="fh">Units of the trade currency per 1 EUR — the same convention as DEGIRO's Wisselkoers (EUR/USD ≈ 1.16).</span></div>
+       <div class="field"><label for="mFee">Costs (EUR)</label>
+         <input type="number" step="any" min="0" id="mFee" placeholder="2.00" value="0"></div>
+
+       <div class="note" id="mPreview" style="margin-top:.4rem">Fill in quantity and price to see the euro total.</div>
+       <div id="mOut"></div>
+       <h3 style="border:0;padding:.9rem 0 .4rem">Entered by hand</h3>
+       <div id="mList2" class="sub">loading…</div>
+     </div>`,
+    `<button class="btn" id="impClose">Close</button>
+     <button class="btn primary hide" id="mSave">Add transaction</button>`);
+
+  $("#impClose").onclick = closeModal;
+  document.querySelectorAll("#impTabs button").forEach(b=>b.onclick=()=>{
+    const t=b.dataset.t;
+    document.querySelectorAll("#impTabs button").forEach(x=>x.setAttribute("aria-pressed", x===b));
+    $("#impFile").classList.toggle("hide", t!=="file");
+    $("#impHand").classList.toggle("hide", t!=="hand");
+    $("#mSave").classList.toggle("hide", t!=="hand");
+  });
+  wireImport();
+  await wireManual();
+}
+
+async function wireManual(){
+  $("#mDate").value = new Date().toISOString().slice(0,10);
+  try{ HOLDINGS = await (await fetch("/api/pf/holdings/simple")).json(); }catch{ HOLDINGS=[]; }
+  $("#mList").innerHTML = HOLDINGS.map(h=>
+    `<option value="${esc(h.isin)}">${esc(h.name)}${h.qty?` — ${h.qty} held`:""}</option>`).join("");
+
+  const find = () => {
+    const v=$("#mIsin").value.trim().toUpperCase();
+    return HOLDINGS.find(h=>h.isin===v) ||
+           HOLDINGS.find(h=>h.name.toUpperCase()===v) || null;
+  };
+
+  const sync = () => {
+    const h=find(), isNew=!h && $("#mIsin").value.trim().length>0;
+    $("#mNewWrap").classList.toggle("hide", !isNew);
+    $("#mTickWrap").classList.toggle("hide", !isNew);
+    $("#mFxWrap").classList.toggle("hide", $("#mCcy").value==="EUR");
+    if(h){
+      $("#mCcy").value = ["EUR","USD","GBP","CHF"].includes(h.currency) ? h.currency : "EUR";
+      $("#mFxWrap").classList.toggle("hide", $("#mCcy").value==="EUR");
+      $("#mHeld").innerHTML = h.qty
+        ? `<b>${esc(h.name)}</b> — you hold <b>${h.qty}</b>${h.avg_price?` at ${h.avg_price} ${esc(h.currency)} average`:""}.`
+        : `<b>${esc(h.name)}</b> — none held right now.`;
+    } else if(isNew){
+      $("#mHeld").textContent = "Not in the ledger yet — it will be created.";
+    } else {
+      $("#mHeld").textContent = "Pick something you already hold, or enter a new ISIN.";
+    }
+    const q=parseFloat($("#mQty").value), p=parseFloat($("#mPrice").value),
+          fee=parseFloat($("#mFee").value)||0, ccy=$("#mCcy").value,
+          fx=parseFloat($("#mFx").value)|| (ccy==="EUR"?1:null);
+    if(q>0 && p>0){
+      const gross=q*p;
+      if(fx){
+        const e=gross/fx, buy=$("#mKind").value==="BUY";
+        $("#mPreview").innerHTML = `<b>${buy?"Cost":"Proceeds"}</b>
+          ${q} × ${p} ${esc(ccy)} = ${gross.toFixed(2)} ${esc(ccy)}${ccy!=="EUR"?` ÷ ${fx} = ${eur(e,2)}`:""}
+          ${fee?` ${buy?"+":"−"} ${eur(fee,2)} costs`:""} → <b>${eur(buy?-(e+fee):(e-fee),2)}</b>`;
+      } else {
+        $("#mPreview").innerHTML = `<b>${q} × ${p} ${esc(ccy)} = ${gross.toFixed(2)} ${esc(ccy)}</b>
+          — the ${esc(ccy)}/EUR rate for that date will be used, or enter one above.`;
+      }
+    } else $("#mPreview").textContent = "Fill in quantity and price to see the euro total.";
+  };
+  ["mIsin","mQty","mPrice","mCcy","mFx","mFee","mKind"].forEach(id=>{
+    const el=$("#"+id); el.oninput=sync; el.onchange=sync; });
+  sync();
+  await refreshManualList();
+
+  $("#mSave").onclick = async () => {
+    const h=find();
+    const body={
+      kind: $("#mKind").value,
+      isin: (h? h.isin : $("#mIsin").value.trim().toUpperCase()),
+      trade_date: $("#mDate").value,
+      quantity: parseFloat($("#mQty").value),
+      price: parseFloat($("#mPrice").value),
+      currency: $("#mCcy").value,
+      fx_rate: parseFloat($("#mFx").value) || null,
+      fee_eur: parseFloat($("#mFee").value) || 0,
+      name: h? null : ($("#mName").value.trim() || null),
+      ticker: h? null : ($("#mTicker").value.trim() || null),
+    };
+    $("#mSave").disabled=true; $("#mSave").textContent="Adding…";
+    try{
+      const r=await fetch("/api/pf/transaction",{method:"POST",
+        headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(j.detail||`HTTP ${r.status}`);
+      $("#mOut").innerHTML=`<div class="note ok"><b>Added</b>
+        ${body.kind==="BUY"?"Cost":"Proceeds"} ${eur(j.total_eur,2)} at an FX rate of ${j.fx_rate} (${esc(j.fx_source)}).</div>`;
+      $("#mQty").value=""; $("#mPrice").value="";
+      await load(); await wireManual();
+    }catch(e){
+      $("#mOut").innerHTML=`<div class="note err"><b>Not added</b>${esc(e.message)}</div>`;
+    }finally{ $("#mSave").disabled=false; $("#mSave").textContent="Add transaction"; }
+  };
+}
+
+function wireImport(){
+  const drop=$("#drop"), file=$("#file"); if(!drop) return;
+  let staged=[];
+  const show = h => { const o=$("#importOut"); if(o) o.innerHTML=h; };
+
+  async function post(url, files){
+    const fd=new FormData(); files.forEach(f=>fd.append("files",f));
+    const r=await fetch(url,{method:"POST",body:fd});
+    const text=await r.text();
+    let j; try{ j=JSON.parse(text); }catch{ j={detail:text.slice(0,300)}; }
+    if(!r.ok) throw new Error(j.detail || `HTTP ${r.status}`);
+    return j;
+  }
+
+  async function preview(files){
+    staged=[...files];
+    if(!staged.length) return;
+    show(`<p class="sub" style="margin-top:.7rem">Reading ${staged.length} file(s)…</p>`);
+    try{
+      const j = await post("/api/pf/import/preview", staged);
+      show(`<div style="margin-top:.7rem">
+        <div class="kv"><span>Rows parsed</span><span>${j.parsed}</span></div>
+        <div class="kv"><span>Already present (skipped)</span><span>${j.duplicates}</span></div>
+        <div class="kv"><span><b>New rows to add</b></span><span><b>${j.new}</b></span></div>
+        <div class="kv"><span>Instruments not yet known</span><span>${j.unmapped_isins.length}</span></div>
+        <p class="sub" style="margin:.6rem 0">${j.files.map(f=>`${esc(f.file)} → <b>${f.kind}</b> (${f.rows} rows)`).join("<br>")}</p>
+        <button class="btn primary" id="commitBtn" ${j.new?"":"disabled"}>${j.new?`Commit ${j.new} rows`:"Nothing new to import"}</button>
+      </div>`);
+      const cb=$("#commitBtn");
+      if(cb) cb.onclick=async()=>{
+        cb.disabled=true; cb.textContent="Committing…";
+        try{
+          const jj = await post("/api/pf/import/commit", staged);
+          show(`<div class="note ok" style="margin-top:.7rem"><b>Imported</b>
+            ${jj.inserted} rows added, ${jj.skipped_duplicates} duplicates skipped.</div>`);
+          await load();
+        }catch(e){
+          show(`<div class="note err" style="margin-top:.7rem"><b>Commit failed</b>${esc(e.message)}</div>`);
+        }
+      };
+    }catch(e){
+      show(`<div class="note err" style="margin-top:.7rem"><b>Could not read those files</b>${esc(e.message)}
+        <br><span class="sub">If this mentions python-multipart, run
+        <code>pip install -r requirements-portfolio.txt</code> in the backend folder and restart.</span></div>`);
+    }
+  }
+
+  drop.ondragover=e=>{e.preventDefault();drop.classList.add("hot");};
+  drop.ondragleave=()=>drop.classList.remove("hot");
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove("hot");preview(e.dataTransfer.files);};
+  file.onchange=e=>preview(e.target.files);
+}
+
+async function refreshManualList(){
+  const box=$("#mList2"); if(!box) return;
+  try{
+    const rows=await (await fetch("/api/pf/transaction/manual")).json();
+    if(!rows.length){ box.textContent="Nothing entered by hand yet."; return; }
+    box.innerHTML=`<div class="tablewrap" style="max-height:200px"><table><tbody>${rows.map(r=>`
+      <tr><td class="l">${dmy(r.trade_dt)}</td>
+        <td class="l"><b>${r.quantity>0?"BUY":"SELL"}</b> ${Math.abs(r.quantity)} ${esc((r.product||"").slice(0,26))}</td>
+        <td>${r.price} ${esc(r.currency||"")}</td><td>${eur(r.total_eur,2)}</td>
+        <td><button class="btn" data-del="${r.id}" style="padding:.1rem .45rem;font-size:.7rem">remove</button></td></tr>`).join("")}
+      </tbody></table></div>`;
+    box.querySelectorAll("[data-del]").forEach(b=>b.onclick=async ev=>{
+      ev.stopPropagation();
+      b.disabled=true;
+      try{
+        const r=await fetch(`/api/pf/transaction/${b.dataset.del}`,{method:"DELETE"});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok) throw new Error(j.detail||r.status);
+        await load(); await wireManual();
+      }catch(e){ $("#mOut").innerHTML=`<div class="note err"><b>Not removed</b>${esc(e.message)}</div>`; b.disabled=false; }
+    });
+  }catch{ box.textContent="Could not load hand-entered rows."; }
+}
+
+load();
+</script>
+</body>
+</html>

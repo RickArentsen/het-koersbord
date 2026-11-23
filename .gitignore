@@ -1,0 +1,82 @@
+# ==========================================================================
+# Het Koersbord — what never leaves this machine
+#
+# The first rule matters more than all the others: this is a personal
+# finance application, and backend/portfolio.db is not a build artefact. It
+# holds every transaction, every position you have ever held, and your FRED
+# and news API keys in the `setting` table. Git keeps history forever, so a
+# database committed once stays recoverable even after it is deleted in a
+# later commit — and a private repository can be made public by one click.
+#
+# The database is synced between machines by copying the file, never by git.
+# See SETUP.md.
+# ==========================================================================
+
+# --- your data -----------------------------------------------------------
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# DEGIRO exports and anything else tabular. Broad on purpose: a stray
+# Transactions.csv in the project root is your whole trading history.
+# If you ever genuinely need to commit a CSV, force it:  git add -f the-file
+*.csv
+*.xlsx
+*.xls
+
+# POL: the politician tracker's filings (tens of thousands of PDFs), its database
+# and its logs. Rebuilt by its own pipeline; never versioned.
+backend/ptt/data/
+
+# --- credentials ---------------------------------------------------------
+.env
+.env.*
+*.key
+*.pem
+secrets*.json
+
+# --- Python --------------------------------------------------------------
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# --- Node / Next.js ------------------------------------------------------
+node_modules/
+.next/
+out/
+.vercel/
+npm-debug.log*
+
+# --- working files -------------------------------------------------------
+# Screenshots and scratch output. Remove this line if you want them versioned.
+Claude outputs/
+
+# ERN: the documents and prompt each Claude Code report was written from,
+# and your thesis with them. Rebuilt on demand; private.
+ern_work/
+# ALRT: the brief each Claude note was written from. Rebuilt on demand; private.
+alrt_work/
+# SPLC: the sentences Claude was given when it read a company's filings.
+splc_work/
+# OIL: the page as Claude was given it for each oil note, with your holdings.
+oil_work/
+# WCH: one stock as Claude was given it for a second opinion, with your book's fit.
+wl_work/
+# READ: the candidates and your holdings as Claude was given them for each scan and article.
+# KAI: what Koers AI was sent for each turn (kai-* folders), your return on its scoreboard.
+read_work/
+# The weekly review's Claude note writes its material here (pf/weekly.py).
+week_work/
+# Claude Code's local settings for this folder (test servers, permissions).
+.claude/
+
+# --- OS ------------------------------------------------------------------
+Thumbs.db
+desktop.ini
+.DS_Store

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WEEK · Het Koersbord</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305080A'/%3E%3Cpath d='M5 23 L12 15 L17 19 L27 7' stroke='%234FA8CE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/term.css">
+<link rel="stylesheet" href="/kit.css">
+<style>
+.fhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:.4rem 1rem;}
+.fhead h1{font-size:1.15rem;letter-spacing:.04em;margin:0;font-weight:600;}
+.fhead .sp{flex:1;}
+.fhead select{background:var(--ground);border:1px solid var(--rule-strong);color:var(--ink);font-family:var(--f-mono);font-size:.72rem;padding:.15rem .3rem;}
+.lines{font-family:var(--f-ui);font-size:.84rem;line-height:1.55;margin:.5rem 0 .2rem;padding-left:1.1rem;max-width:90ch;}
+.lines li{margin:.2rem 0;}
+.ctitle{font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:.7rem 0 .25rem;}
+.expl{font-family:var(--f-ui);font-size:.76rem;color:var(--ink-mid);line-height:1.55;margin:.5rem 0;max-width:64rem;}
+.tbl td.l,.tbl th.l{text-align:left;}
+.tbl td .nm{color:var(--ink-mid);font-family:var(--f-ui);font-size:.66rem;margin-left:.35rem;}
+.md{font-family:var(--f-ui);font-size:.84rem;line-height:1.6;color:var(--ink);max-width:88ch;}
+.md h1{font-family:var(--f-mono);font-size:1.02rem;letter-spacing:.02em;margin:.4rem 0 .6rem;line-height:1.35;}
+.md h2{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-mid);margin:1.2rem 0 .4rem;border-bottom:1px solid var(--rule);padding-bottom:.2rem;}
+.md h3{font-size:.84rem;margin:.9rem 0 .3rem;}
+.md p{margin:.45rem 0;} .md ul,.md ol{margin:.35rem 0;padding-left:1.3rem;} .md li{margin:.2rem 0;}
+.md strong{font-weight:600;color:#DCE6EA;}
+.md table{border-collapse:collapse;margin:.5rem 0;font-family:var(--f-mono);font-size:.72rem;}
+.md th,.md td{border-bottom:1px solid var(--rule);padding:.22rem .5rem;text-align:right;}
+.md th:first-child,.md td:first-child{text-align:left;}
+.day{border-bottom:1px dotted var(--rule);padding:.3rem 0;font-size:.74rem;}
+.day b{display:inline-block;min-width:7.5rem;color:var(--ink-mid);font-weight:500;}
+.tag{font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--rule-strong);padding:0 .25rem;margin-left:.3rem;color:var(--ink-soft);}
+.tag.mine{color:var(--accent);border-color:var(--accent-dim);} .tag.warn{color:var(--warn);border-color:var(--warn-dim);}
+.list a,.list div{display:block;font-family:var(--f-ui);font-size:.76rem;padding:.2rem 0;border-bottom:1px dotted var(--rule);}
+.list .dim{font-size:.64rem;margin-left:.3rem;}
+.kv{display:flex;justify-content:space-between;gap:1rem;padding:.22rem 0;border-bottom:1px dotted var(--rule);font-size:.72rem;}
+.kv>span:first-child{color:var(--ink-mid);} .kv>span:last-child{text-align:right;}
+.job{border:1px solid var(--accent-dim);background:rgba(79,168,206,.06);padding:.45rem .7rem;font-size:.72rem;margin:.4rem 0;}
+.bar{display:grid;grid-template-columns:minmax(110px,30%) 1fr 5rem;gap:.5rem;align-items:center;font-size:.7rem;padding:.1rem 0;}
+.bar .t{position:relative;height:10px;background:var(--sunk);}
+.bar .t i{position:absolute;top:1px;bottom:1px;}
+.bar .t .z{position:absolute;top:-2px;bottom:-2px;left:50%;width:1px;background:var(--rule-strong);}
+</style>
+</head>
+<body>
+<div id="shell"></div>
+<div class="wrap" id="app"><div class="center">Loading<span class="blink">_</span></div></div>
+<script src="/term.js"></script>
+<script src="/kit.js"></script>
+<script src="/week.js"></script>
+</body>
+</html>

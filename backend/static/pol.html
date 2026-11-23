@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>POL · Het Koersbord</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305080A'/%3E%3Cpath d='M5 23 L12 15 L17 19 L27 7' stroke='%234FA8CE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/term.css">
+<link rel="stylesheet" href="/kit.css">
+<style>
+.intro{font-family:var(--f-ui);font-size:.84rem;color:var(--ink-mid);line-height:1.6;max-width:76ch;}
+.intro b{color:var(--ink);font-weight:500;}
+.status{display:flex;flex-wrap:wrap;gap:.4rem 1rem;align-items:center;font-size:.68rem;color:var(--ink-mid);margin:.2rem 0 .6rem;}
+.status b{color:var(--ink);font-weight:500;}
+.status .sp{flex:1;}
+.job{border:1px solid var(--accent-dim);background:rgba(79,168,206,.06);padding:.5rem .7rem;font-size:.72rem;margin:.4rem 0;}
+.job.err{border-color:var(--loss);background:rgba(220,70,60,.06);}
+.tabs{display:flex;flex-wrap:wrap;gap:.25rem;margin:.6rem 0 .5rem;border-bottom:1px solid var(--rule-strong);}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--ink-mid);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;padding:.35rem .6rem;}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--accent);}
+.tabs button:hover{color:var(--ink);}
+.tabs .n{color:var(--ink-soft);margin-left:.3rem;}
+.filters{display:flex;flex-wrap:wrap;gap:.35rem .7rem;align-items:center;font-size:.66rem;margin:.3rem 0 .5rem;}
+.filters .lbl{font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);}
+.filters input[type=search]{background:var(--ground);border:1px solid var(--rule-strong);color:var(--ink);font-family:var(--f-mono);font-size:.7rem;padding:.14rem .45rem;width:12rem;}
+.filters input[type=search]:focus{border-color:var(--accent);outline:none;}
+.moreRow{display:flex;gap:.7rem;align-items:center;font-size:.66rem;margin:.6rem 0 .2rem;}
+.party{display:inline-block;min-width:1.1rem;text-align:center;font-size:.58rem;font-weight:600;padding:0 .2rem;margin-right:.3rem;border:1px solid var(--rule-strong);}
+.party.R{color:#e07a6a;border-color:#7a3a32;} .party.D{color:#6aa8e0;border-color:#2f527a;} .party.I{color:var(--ink-mid);}
+.ch{font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-left:.3rem;}
+.remit{font-size:.56rem;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--warn-dim);color:var(--warn);padding:0 .25rem;white-space:nowrap;}
+.side.buy{color:var(--gain);} .side.sell{color:var(--loss);}
+.grade{display:inline-block;width:1.1rem;text-align:center;font-weight:600;font-size:.66rem;border:1px solid var(--rule-strong);}
+.grade.A{color:var(--warn);border-color:var(--warn-dim);}
+.yours{font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent-dim);padding:0 .25rem;margin-left:.3rem;}
+.note2{font-family:var(--f-ui);font-size:.72rem;color:var(--ink-soft);line-height:1.55;margin:.5rem 0;max-width:86ch;}
+.hdr2{display:flex;flex-wrap:wrap;align-items:baseline;gap:.6rem;margin-bottom:.4rem;}
+.hdr2 h1{font-size:1.15rem;letter-spacing:.04em;margin:0;font-weight:600;}
+.hdr2 .sub{font-size:.68rem;color:var(--ink-soft);}
+.back{font-size:.68rem;}
+.chips{display:flex;flex-wrap:wrap;gap:.3rem;margin:.3rem 0;}
+.chip2{font-size:.62rem;border:1px solid var(--rule-strong);padding:.1rem .4rem;color:var(--ink-mid);}
+.chip2.on{border-color:var(--warn-dim);color:var(--warn);}
+.seat{font-family:var(--f-ui);font-size:.76rem;padding:.2rem 0;border-bottom:1px dotted var(--rule);}
+.seat .t{color:var(--ink-soft);font-size:.66rem;margin-left:.4rem;}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem;align-items:start;}
+@media(max-width:1000px){.grid2{grid-template-columns:minmax(0,1fr);}}
+.foot{font-family:var(--f-ui);font-size:.68rem;color:var(--ink-soft);line-height:1.55;margin-top:1rem;max-width:90ch;}
+td.l .dim{max-width:16rem;display:inline-block;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;white-space:nowrap;}
+</style>
+</head>
+<body>
+<div id="shell"></div>
+<div class="wrap" id="app"><div class="center">Loading<span class="blink">_</span></div></div>
+<script src="/term.js"></script>
+<script src="/kit.js"></script>
+<script src="/pol.js"></script>
+</body>
+</html>

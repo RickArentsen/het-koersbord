@@ -1,0 +1,51 @@
+fastapi
+uvicorn
+python-multipart
+
+# 1.7 is where the Yahoo streaming client (yfinance.AsyncWebSocket) arrives.
+# An older version still works — the live feed detects the missing import and
+# falls back to polling every 30 seconds, and the dot in the top bar says so —
+# but you get pushed ticks only from 1.7 up.
+yfinance>=1.7
+websockets          # the streaming transport, used by yfinance.live
+protobuf            # Yahoo sends pricing messages as protobuf
+
+# Pinned for Windows Smart App Control. It loads only compiled files that are
+# signed or that Microsoft's reputation service knows, and in September 2026 it
+# blocked pandas 3.0.6 (pandas\_libs\interval.pyd), which stopped pandas and
+# therefore yfinance from importing at all. 3.0.5 loads, all but the two SAS-file
+# readers the app never uses. Try a newer pandas with verify.py before lifting this.
+pandas==3.0.5
+requests
+
+# The security page reads each SEC filing's XBRL instance for segments,
+# products, regions and backlog.
+lxml
+
+# Earnings (ERN): Claude's written report runs on your own Anthropic API key,
+# and only when you ask for it; pypdf reads slides and releases published as PDF.
+anthropic>=1.0
+pypdf
+
+# The GPR index is published as a spreadsheet when the CSV mirror is down.
+xlrd
+openpyxl
+certifi
+curl_cffi
+
+# POL: the politician tracker in backend/ptt runs as its own process. It
+# parses the House's PDFs (pdfplumber, with pypdfium2 and Pillow), reads
+# committee snapshots (YAML) and OCRs scanned filings with Windows OCR
+# (OpenCV, and pywinrt in place of winsdk, which has no Python 3.13 build).
+# Pinned to the versions that loaded under Smart App Control on 3 November 2026.
+pdfplumber==0.11.10
+pyyaml==6.0.3
+opencv-python==5.0.0.93
+winrt-runtime==4.1.0
+winrt-Windows.Media.Ocr==4!10.0.28000.2957
+winrt-Windows.Globalization==4!10.0.28000.2957
+winrt-Windows.Graphics.Imaging==4!10.0.28000.2957
+winrt-Windows.Storage==4!10.0.28000.2957
+winrt-Windows.Storage.Streams==4!10.0.28000.2957
+winrt-Windows.Foundation==4!10.0.28000.2957
+winrt-Windows.Foundation.Collections==4!10.0.28000.2957

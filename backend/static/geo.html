@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GEO · Het Koersbord</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305080A'/%3E%3Cpath d='M5 23 L12 15 L17 19 L27 7' stroke='%234FA8CE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="/term.css">
+<style>
+/* ---------- the map ------------------------------------------------------ */
+.mapwrap{display:grid;grid-template-columns:minmax(0,1fr) 304px;gap:1px;background:var(--rule);}
+@media(max-width:1040px){.mapwrap{grid-template-columns:1fr;}}
+.mapwrap>*{min-width:0;background:var(--surface);}
+.mapbox{position:relative;overflow:hidden;background:#070B0E;}
+.mapbox svg{display:block;width:100%;height:auto;touch-action:none;cursor:grab;}
+.mapbox svg.drag{cursor:grabbing;}
+.cty{fill:#0D1519;stroke:#17232A;stroke-width:.8;vector-effect:non-scaling-stroke;}
+.cty.e1{fill:#123040;} .cty.e2{fill:#194A61;} .cty.e3{fill:#22698A;}
+.cty.e4{fill:#3189B1;} .cty.e5{fill:#4FA8CE;}
+.cty.hit{cursor:pointer;}
+.cty.hot{stroke:var(--warn);stroke-width:1.6;}
+.cty.sel{stroke:#EAF6FB;stroke-width:2;}
+.cty.dimmed{opacity:.35;}
+.pin{cursor:pointer;}
+.pin text{font-family:var(--f-mono);font-size:11px;fill:var(--ink-mid);letter-spacing:.04em;}
+.pin:hover text{fill:var(--accent);}
+.pin.on text{fill:var(--accent);}
+.pin .dot{stroke-width:1.4;}
+.pin.choke .dot{fill:#0B1013;stroke:var(--warn);}
+.pin.choke.on .dot{fill:var(--warn);}
+.pin.conflict .dot{fill:#0B1013;stroke:var(--loss);}
+.pin.conflict.on .dot{fill:var(--loss);}
+.pin.elect .dot{fill:#0B1013;stroke:var(--accent);}
+.pin.elect.on .dot{fill:var(--accent);}
+.mtip{position:absolute;pointer-events:none;z-index:8;background:var(--sunk);
+  border:1px solid var(--rule-strong);padding:.24rem .45rem;font-size:.68rem;
+  white-space:nowrap;display:none;color:var(--ink);}
+.mapctl{position:absolute;right:.4rem;top:.4rem;z-index:6;display:flex;flex-direction:column;gap:.24rem;}
+.mapctl button{width:26px;height:24px;background:rgba(11,16,19,.9);border:1px solid var(--rule-strong);
+  color:var(--ink-mid);font-size:.8rem;line-height:1;padding:0;}
+.mapctl button:hover{border-color:var(--accent);color:var(--accent);}
+.scale{display:flex;align-items:center;gap:.3rem;font-size:.6rem;color:var(--ink-soft);}
+.scale i{width:20px;height:9px;display:inline-block;border:1px solid var(--rule);}
+.rail{padding:.55rem .6rem;display:flex;flex-direction:column;gap:.45rem;max-height:560px;overflow:auto;}
+@media(max-width:1040px){.rail{max-height:none;}}
+.rail h3{margin:0;font-size:.74rem;font-weight:600;letter-spacing:.06em;}
+.lbl{display:block;font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);}
+.rail .sub{font-size:.62rem;color:var(--ink-soft);letter-spacing:.06em;text-transform:uppercase;}
+.rail .prow{display:grid;grid-template-columns:1fr auto auto;gap:.5rem;align-items:baseline;
+  font-size:.72rem;padding:.13rem 0;border-bottom:1px dotted var(--rule);}
+.rail .prow:last-child{border-bottom:0;}
+.layers{display:flex;gap:.3rem;flex-wrap:wrap;}
+.lbtn{font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;padding:.1rem .34rem;
+  border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink-soft);}
+.lbtn.on{color:var(--ink);border-color:var(--accent);}
+.lbtn i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:.3rem;
+  border:1px solid currentColor;vertical-align:middle;}
+.lbtn.on i{background:currentColor;}
+.lbtn.choke.on{color:var(--warn);} .lbtn.conflict.on{color:var(--loss);}
+.lbtn.elect.on{color:var(--accent);}
+
+/* ---------- risk register ------------------------------------------------ */
+.rk{border-bottom:1px solid var(--rule);padding:.42rem 0;}
+.rk:last-child{border-bottom:0;}
+.rkhead{display:grid;grid-template-columns:184px 1fr 96px 74px 58px;gap:.6rem;align-items:center;
+  cursor:pointer;}
+@media(max-width:900px){.rkhead{grid-template-columns:1fr 84px;}
+  .rkhead .bar,.rkhead .np{display:none;}}
+.rkhead:hover .rn{color:var(--accent);}
+.rn{font-size:.8rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.kind{font-size:.54rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-soft);}
+.rbar{display:block;position:relative;height:9px;background:var(--sunk);border:1px solid var(--rule);}
+.rbar u{position:absolute;left:0;top:0;bottom:0;background:var(--accent);}
+.rbar i{position:absolute;top:0;bottom:0;background:var(--accent-dim);}
+.rkbody{padding:.5rem 0 .3rem;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:.9rem;}
+@media(max-width:900px){.rkbody{grid-template-columns:1fr;}}
+.chan{font-family:var(--f-ui);font-size:.78rem;line-height:1.5;color:var(--ink-mid);}
+.pchip{display:inline-flex;align-items:baseline;gap:.3rem;border:1px solid var(--rule-strong);
+  padding:.04rem .3rem;font-size:.66rem;margin:0 .26rem .26rem 0;}
+.pchip.named{border-color:var(--accent);}
+.pchip .w{color:var(--ink-soft);font-size:.6rem;}
+.wch{display:inline-flex;gap:.3rem;align-items:baseline;border:1px solid var(--rule);
+  padding:.04rem .32rem;font-size:.66rem;margin:0 .26rem .26rem 0;}
+
+/* ---------- exposure matrix ---------------------------------------------- */
+.mxwrap{overflow-x:auto;}
+.mx{border-collapse:collapse;font-size:.66rem;min-width:100%;}
+.mx th{padding:.2rem .3rem;font-weight:500;font-size:.56rem;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--ink-soft);text-align:center;white-space:nowrap;}
+.mx th.l{text-align:left;position:sticky;left:0;background:var(--surface);z-index:2;}
+.mx td{padding:.14rem .3rem;text-align:center;border-top:1px dotted var(--rule);}
+.mx td.l{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1;white-space:nowrap;}
+.mx tr:hover td{background:#0E161B;}
+.mx tr:hover td.l{background:#0E161B;}
+.g-named{color:var(--accent);} .g-sector{color:var(--ink-mid);} .g-country{color:var(--ink-soft);}
+.mx .v{text-align:right;color:var(--ink-mid);}
+
+/* ---------- chokepoints --------------------------------------------------- */
+/* auto-fit rather than a fixed count: seven cards in four columns leaves an
+   empty box that reads as a missing panel. */
+.cps{display:grid;grid-template-columns:repeat(auto-fit,minmax(256px,1fr));gap:1px;
+     background:var(--rule);}
+@media(max-width:620px){.cps{grid-template-columns:1fr;}}
+.cp{background:var(--surface);padding:.45rem .55rem;display:flex;flex-direction:column;gap:.2rem;
+  border-left:2px solid transparent;cursor:pointer;min-width:0;}
+.cp:hover{background:#0E151A;border-left-color:var(--warn);}
+.cp.on{background:#0E151A;border-left-color:var(--warn);}
+.cp .t{font-size:.76rem;font-weight:500;}
+.cp .f{font-family:var(--f-ui);font-size:.68rem;color:var(--ink-soft);line-height:1.4;}
+
+/* ---------- gauges -------------------------------------------------------- */
+.gg{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--rule);}
+@media(max-width:760px){.gg{grid-template-columns:1fr;}}
+.gcell{background:var(--surface);padding:.5rem .6rem;display:flex;gap:.8rem;align-items:flex-start;
+  flex-wrap:wrap;min-width:0;}
+.gcell .meta{flex:1;min-width:150px;}
+.gval{font-size:1.5rem;font-weight:600;line-height:1.1;}
+.grate{font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;}
+.gcomp{display:grid;grid-template-columns:1fr 34px;gap:.4rem;font-size:.64rem;
+  align-items:baseline;padding:.08rem 0;border-bottom:1px dotted var(--rule);}
+.gcomp:last-child{border-bottom:0;}
+.gcomp b{font-weight:500;color:var(--ink);text-align:right;}
+
+/* ---------- fed watch ----------------------------------------------------- */
+.fed{display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem;}
+@media(max-width:620px){.fed{grid-template-columns:1fr;}}
+.fb{background:var(--sunk);border:1px solid var(--rule);padding:.4rem .5rem;}
+.fb .k,.fb .v,.fb .bar{display:block;}
+.fb .k{font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);}
+.fb .v{font-size:1.15rem;font-weight:600;}
+.fb .bar{height:5px;background:var(--ground);margin-top:.28rem;}
+.fb .bar u{display:block;height:100%;background:var(--ink-soft);}
+.fb.lead{background:#0D161B;} .fb.lead .bar u{background:var(--accent);}
+
+/* ---------- shocks -------------------------------------------------------- */
+.sh{display:grid;grid-template-columns:150px 92px 66px 1fr;gap:.6rem;align-items:center;
+  padding:.28rem 0;border-bottom:1px dotted var(--rule);font-size:.72rem;}
+.sh:last-child{border-bottom:0;}
+.sh.head{border-bottom:1px solid var(--rule-strong);color:var(--ink-soft);font-size:.56rem;
+  letter-spacing:.1em;text-transform:uppercase;}
+.sh .num{text-align:right;}
+@media(max-width:760px){.sh{grid-template-columns:1fr 88px 60px;} .sh .mv{display:none;}}
+.mv{font-size:.64rem;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.elrow{display:grid;grid-template-columns:96px 1fr auto;gap:.6rem;align-items:baseline;
+  padding:.2rem 0;border-bottom:1px dotted var(--rule);font-size:.74rem;}
+.elrow:last-child{border-bottom:0;}
+.src{font-size:.54rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);
+  border:1px solid var(--rule);padding:0 .22rem;}
+</style>
+</head>
+<body>
+<div id="shell"></div>
+<div class="wrap" id="app"><div class="center">Loading<span class="blink">_</span></div></div>
+
+<script src="/term.js"></script>
+<script>
+/* ==========================================================================
+   GEO — geopolitics, measured against the book rather than narrated.
+
+   Three questions, in this order:
+     1. Where is my money, and what sits near it?          (the map)
+     2. Which risks reach it, through what channel?        (register + matrix)
+     3. What is the market paying for that risk right now? (sentiment, FedWatch,
+                                                            GPR, the proxies)
+   Every number is joined to a position or to a traded price. Nothing on this
+   page is an opinion about what will happen.
+   ========================================================================== */
+
+$("#shell").innerHTML = termBar({
+  here: "GEO",
+  right: `<button class="tbtn" id="refBtn">Refresh</button>
+          <button class="tbtn on" id="reloadBtn">Reload</button>`
+});
+wireShell();
+$("#reloadBtn").onclick = () => load();
+$("#refBtn").onclick = async () => {
+  const b = $("#refBtn"); b.textContent = "Fetching…"; b.disabled = true;
+  try{ await fetch("/api/pf/geo/refresh?what=all", {method:"POST"}); }catch{}
+  b.textContent = "Refresh"; b.disabled = false; load();
+};
+
+let GEO = null, SENT = null, BOARD = null, WORLD = null;
+let SEL  = { iso:null, risk:null, cp:null };
+let OPEN = null;                       /* which risk is expanded */
+let LAYERS = { choke:true, conflict:true, elect:true };
+let VB = null, VB0 = null, MAPW = 0, ALLROWS = false;
+
+const ago = s => s == null || s > 1e8 ? "" :
+  s < 90 ? Math.round(s) + "s" : s < 5400 ? Math.round(s/60) + "m" : Math.round(s/3600) + "h";
+
+/* The union's member states, so a risk that names "EU" shades the map. */
+const EU = ["DE","FR","NL","BE","IT","ES","PT","IE","AT","FI","SE","DK","PL","CZ",
+            "GR","HU","RO","SK","SI","HR","BG","LT","LV","EE","LU","MT","CY"];
+const expand = list => [...new Set((list||[]).flatMap(c => c === "EU" ? EU : [c]))];
+
+async function jget(u){
+  const r = await fetch(u);
+  if(!r.ok) throw new Error(u + " → " + r.status);
+  return r.json();
+}
+
+async function load(){
+  const [g, s, b, w] = await Promise.allSettled([
+    jget("/api/pf/geo"), jget("/api/pf/sentiment"),
+    jget("/api/pf/market/board"), WORLD ? Promise.resolve(WORLD) : jget("/world.json"),
+  ]);
+  GEO   = g.status === "fulfilled" ? g.value : { error: String(g.reason && g.reason.message || g.reason), risks: [] };
+  SENT  = s.status === "fulfilled" ? s.value : { error: String(s.reason && s.reason.message || s.reason) };
+  BOARD = b.status === "fulfilled" ? b.value : { rows: [] };
+  WORLD = w.status === "fulfilled" ? w.value : null;
+  renderAll();
+}
+
+/* ---------- small formatters --------------------------------------------- */
+const ROW = k => ((BOARD.rows || []).find(r => r.k === k)) || null;
+const lvl = r => {
+  if(!r || r.last == null) return "–";
+  if(r.u === "fx")  return nf(r.last, 4);
+  if(r.u === "pct") return r.last.toFixed(2) + "%";
+  if(r.u === "usd") return "$" + nf(r.last, 2);
+  if(r.u === "eur") return "€" + nf(r.last, 2);
+  return nf(r.last, 2);
+};
+const rowChg = r => {
+  if(!r) return "";
+  if(r.u === "pct") return r.d_abs == null ? "" : (r.d_abs >= 0 ? "+" : "") + Math.round(r.d_abs*100) + "bp";
+  return r.d_pct == null ? "" : pct(r.d_pct, 1);
+};
+const rowSgn = r => r ? sgn(r.u === "pct" ? r.d_abs : r.d_pct) : "";
+
+/* A line that fills whatever width it is given. A fixed-width SVG is what
+   pushed this page sideways on a phone, so the viewBox stretches and the
+   stroke is told not to stretch with it. */
+function line(vals, w, h, colour){
+  if(!vals || vals.length < 2) return "";
+  const lo = Math.min(...vals), hi = Math.max(...vals), rng = (hi - lo) || 1;
+  const pts = vals.map((v,i) =>
+    `${(i/(vals.length-1)*w).toFixed(1)},${(h - (v-lo)/rng*h).toFixed(1)}`).join(" ");
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"
+    style="display:block;width:100%;height:${h}px"><polyline points="${pts}" fill="none"
+    stroke="${colour}" stroke-width="1.2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+/* ---------- render -------------------------------------------------------- */
+function renderAll(){
+  if(GEO.error && !(GEO.risks || []).length){
+    $("#app").innerHTML = `<div class="panel"><div class="body"><div class="note">
+      <b>GEO is not built yet</b>${esc(GEO.error)}<br>
+      The page is assembled by a background thread a few seconds after the app starts.
+      Press Refresh, or Reload in a moment.</div></div></div>`;
+    return;
+  }
+  $("#app").innerHTML = `
+    ${figStrip()}
+    ${mapPanel()}
+    ${registerPanel()}
+    ${matrixPanel()}
+    ${chokePanel()}
+    ${shockPanel()}
+    <div class="cols c-2">${gaugePanel()}${fedPanel()}</div>
+    <div class="cols c-2">${gprPanel()}${electionPanel()}</div>
+    ${sourcePanel()}`;
+  buildMap();
+  wire();
+}
+
+/* ---------- 1. the strip -------------------------------------------------- */
+function figStrip(){
+  const risks = GEO.risks || [];
+  const top = risks[0];
+  const cty = Object.values(GEO.countries || {}).sort((a,b) => b.value_eur - a.value_eur);
+  const cnn = (SENT && SENT.cnn) || {}, gp = (SENT && SENT.gpr) || {}, fed = (SENT && SENT.fed) || {};
+  const named = risks.reduce((m,r) => Math.max(m, r.named_pct || 0), 0);
+  const nr = risks.find(r => (r.named_pct || 0) === named);
+  const fedTxt = fed.ok
+    ? (fed.implied_move_bp >= 0 ? "+" : "") + fed.implied_move_bp + "bp"
+    : "–";
+  const fedSub = fed.ok
+    ? `${dmy(fed.next.date)} · ${fed.cut > fed.hike ? fed.cut + "% cut" : fed.hike > 1 ? fed.hike + "% hike" : fed.hold + "% hold"}`
+    : (fed.next ? `${dmy(fed.next.date)} · not priced` : "no meeting list");
+
+  return `<div class="panel"><header><h2>Geopolitics</h2>
+      <span class="hint">structural risks joined to your ${eur(GEO.total_eur)} book · built ${ago(GEO.age_s) || "–"} ago</span>
+    </header>
+    <div class="figs">
+      <div class="fig lead"><span class="k">Largest exposure</span>
+        <span class="v">${top ? top.pct.toFixed(0) + "%" : "–"}</span>
+        <span class="s">${top ? esc(top.name) + " · " + eur(top.value_eur) : "–"}</span></div>
+      <div class="fig"><span class="k">Most direct</span>
+        <span class="v">${named ? named.toFixed(0) + "%" : "–"}</span>
+        <span class="s">${nr ? esc(nr.name) + " · " + nr.named + " names by name" : "nothing named directly"}</span></div>
+      <div class="fig"><span class="k">Countries</span>
+        <span class="v">${cty.length}</span>
+        <span class="s">${cty[0] ? esc(cty[0].name) + " " + cty[0].pct.toFixed(0) + "%" : "–"}</span></div>
+      <div class="fig"><span class="k">Fear &amp; greed</span>
+        <span class="v ${bandClass(cnn.score)}">${cnn.score != null ? cnn.score.toFixed(0) : "–"}</span>
+        <span class="s">${esc(cnn.rating || (SENT && SENT.error ? "unavailable" : "–"))} · CNN</span></div>
+      <div class="fig"><span class="k">Geopolitical risk</span>
+        <span class="v">${gp.ok ? gp.value : "–"}</span>
+        <span class="s">${gp.ok ? gp.pctile + "th percentile of its year" : "index unavailable"}</span></div>
+      <div class="fig"><span class="k">Next Fed move</span>
+        <span class="v ${fed.ok ? (fed.implied_move_bp < -2 ? "pos" : fed.implied_move_bp > 2 ? "warnc" : "") : ""}">${fedTxt}</span>
+        <span class="s">${esc(fedSub)}</span></div>
+    </div></div>`;
+}
+
+const bandClass = s => s == null ? "" : s < 45 ? "neg" : s > 55 ? "pos" : "warnc";
+
+/* ---------- 2. the map ---------------------------------------------------- */
+function mapPanel(){
+  return `<div class="panel">
+    <header><h2>The world, weighted by your money</h2>
+      <span class="hint">shade is your exposure · click a country, a chokepoint or a risk marker · scroll to zoom, drag to pan</span>
+      <span class="layers" id="layers">
+        <button class="lbtn choke ${LAYERS.choke?"on":""}"       data-l="choke"><i></i>Chokepoints</button>
+        <button class="lbtn conflict ${LAYERS.conflict?"on":""}" data-l="conflict"><i></i>Flashpoints</button>
+        <button class="lbtn elect ${LAYERS.elect?"on":""}"       data-l="elect"><i></i>Elections</button>
+      </span></header>
+    <div class="mapwrap">
+      <div class="mapbox" id="mapbox">
+        <div class="mapctl">
+          <button id="zin"  title="Zoom in">+</button>
+          <button id="zout" title="Zoom out">−</button>
+          <button id="zrst" title="Reset the view">⌂</button>
+        </div>
+        <div class="mtip" id="mtip"></div>
+        <div id="mapsvg"></div>
+      </div>
+      <div class="rail" id="rail"></div>
+    </div>
+    <div class="body" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center;
+         border-top:1px solid var(--rule);padding-top:.4rem">
+      <span class="scale"><span class="dim">Share of book</span>
+        <i style="background:#0D1519"></i><i style="background:#123040"></i>
+        <i style="background:#194A61"></i><i style="background:#22698A"></i>
+        <i style="background:#3189B1"></i><i style="background:#4FA8CE"></i>
+        <span class="dim">0 → 40%+</span></span>
+      <span class="dim" style="font-size:.64rem">Country of listing, not of revenue — a
+        Dutch-listed semiconductor name earns most of its money in Asia.</span>
+    </div></div>`;
+}
+
+function buildMap(){
+  const host = $("#mapsvg");
+  if(!host) return;
+  if(!WORLD || !WORLD.paths){
+    host.innerHTML = `<div class="body"><div class="note"><b>The map file is missing</b>
+      /world.json did not load, so the map cannot draw. Everything else on this page is
+      unaffected.</div></div>`;
+    return;
+  }
+  const vb = (WORLD.viewBox || "0 0 2475 1388").split(/\s+/).map(Number);
+  VB0 = { x: vb[0], y: vb[1], w: vb[2], h: vb[3] };
+  VB  = { ...VB0 };
+  MAPW = vb[2];
+  const paths = Object.entries(WORLD.paths)
+    .map(([iso, d]) => `<path class="cty" data-iso="${iso}" d="${d}"></path>`).join("");
+  host.innerHTML = `<svg id="wmap" viewBox="${VB.x} ${VB.y} ${VB.w} ${VB.h}"
+      preserveAspectRatio="xMidYMid meet" role="img"
+      aria-label="World map shaded by portfolio exposure">
+      <g id="lands">${paths}</g><g id="pins"></g></svg>`;
+
+  // Crop the default view to the inhabited world. On an equirectangular map
+  // Antarctica is a quarter of the height and none of it is investable, so the
+  // frame is measured with it hidden — which also stops the whole page being
+  // half ocean on a laptop screen.
+  try{
+    const aq = host.querySelector('path[data-iso="AQ"]');
+    if(aq) aq.style.display = "none";
+    const bb = document.getElementById("lands").getBBox();
+    if(aq) aq.style.display = "";
+    if(bb.width > 100 && bb.height > 100){
+      const m = 10;
+      VB0 = { x:bb.x - m, y:bb.y - m, w:bb.width + 2*m, h:bb.height + 2*m };
+      VB  = { ...VB0 };
+      document.getElementById("wmap").setAttribute("viewBox",
+        `${VB.x.toFixed(1)} ${VB.y.toFixed(1)} ${VB.w.toFixed(1)} ${VB.h.toFixed(1)}`);
+    }
+  }catch(e){ /* getBBox throws in a few headless contexts; the full frame is fine */ }
+
+  paintMap(); paintPins(); renderRail(); wireMap();
+}
+
+function exposureClass(p){
+  if(!p) return "";
+  return p >= 40 ? "e5" : p >= 15 ? "e4" : p >= 5 ? "e3" : p >= 1 ? "e2" : p > 0 ? "e1" : "";
+}
+
+function paintMap(){
+  const cs = GEO.countries || {};
+  const risk = SEL.risk ? (GEO.risks || []).find(r => r.k === SEL.risk) : null;
+  const hot  = risk ? new Set(expand(risk.countries)) : null;
+  $$("#lands path").forEach(p => {
+    const iso = p.dataset.iso, c = cs[iso];
+    p.setAttribute("class", "cty " + exposureClass(c && c.pct)
+      + (c ? " hit" : "") + (hot && hot.has(iso) ? " hot" : "")
+      + (hot && !hot.has(iso) && !c ? " dimmed" : "")
+      + (SEL.iso === iso ? " sel" : ""));
+  });
+}
+
+function pinList(){
+  const out = [];
+  const cen = (WORLD && WORLD.centroids) || {};
+  if(LAYERS.choke)
+    for(const c of (GEO.chokepoints || []))
+      if(c.xy) out.push({ cls:"choke", k:"cp:"+c.k, xy:c.xy, label:shortName(c.name),
+                          on:SEL.cp === c.k });
+  if(LAYERS.conflict)
+    for(const r of (GEO.risks || [])){
+      if(r.kind !== "conflict" && r.kind !== "export controls") continue;
+      const iso = expand(r.countries).find(c => cen[c]);
+      if(!iso) continue;
+      out.push({ cls:"conflict", k:"rk:"+r.k, xy:cen[iso], label:shortName(r.name),
+                 on:SEL.risk === r.k, dy:-13 });
+    }
+  if(LAYERS.elect)
+    for(const e of (GEO.elections || [])){
+      if(e.past || !cen[e.c]) continue;
+      out.push({ cls:"elect", k:"el:"+e.d+e.c, xy:cen[e.c],
+                 label:e.what.replace(/^(US|French|Argentine)\s*/,"") + " · " + e.days + "d",
+                 dy:14 });
+    }
+  return out;
+}
+
+const shortName = s => String(s).replace(/ \/ .*$/, "").replace(/^Strait of /, "")
+                              .replace(/ — /, "–").slice(0, 22);
+
+function paintPins(){
+  const g = document.getElementById("pins");
+  if(!g) return;
+  // Markers are drawn at a constant SIZE ON SCREEN, not a constant size in map
+  // units: one viewBox unit is a third of a pixel on a phone and two on a
+  // zoomed-in laptop, so a fixed radius is either invisible or enormous.
+  const svg = document.getElementById("wmap");
+  const wpx = (svg && svg.clientWidth) || 900;
+  const s = VB.w / wpx;
+  const label = wpx >= 620;      /* on a phone the dots keep their tooltips only */
+  g.innerHTML = pinList().map(p => `
+    <g class="pin ${p.cls} ${p.on ? "on" : ""}" data-k="${esc(p.k)}"
+       transform="translate(${p.xy[0]},${p.xy[1]}) scale(${s.toFixed(3)})">
+      <circle class="dot" r="4.5"><title>${esc(p.label)}</title></circle>
+      <circle r="11" fill="transparent"></circle>
+      ${label ? `<text x="8" y="${p.dy || 4}">${esc(p.label)}</text>` : ""}
+    </g>`).join("");
+  g.querySelectorAll(".pin").forEach(el => el.onclick = ev => {
+    ev.stopPropagation();
+    const [kind, key] = el.dataset.k.split(":");
+    if(kind === "cp"){ SEL = { iso:null, risk:null, cp:key }; }
+    else if(kind === "rk"){ SEL = { iso:null, risk:key, cp:null }; OPEN = key; refreshRegister(); }
+    else { const el2 = (GEO.elections||[]).find(e => "el:"+e.d+e.c === el.dataset.k);
+           SEL = { iso: el2 ? el2.c : null, risk:null, cp:null }; }
+    paintMap(); paintPins(); renderRail();
+  });
+}
+
+function wireMap(){
+  const svg = document.getElementById("wmap");
+  if(!svg) return;
+
+  const apply = () => {
+    svg.setAttribute("viewBox", `${VB.x.toFixed(1)} ${VB.y.toFixed(1)} ${VB.w.toFixed(1)} ${VB.h.toFixed(1)}`);
+    paintPins();
+  };
+  const clamp = () => {
+    VB.w = Math.max(VB0.w / 8, Math.min(VB0.w, VB.w));
+    VB.h = VB.w * VB0.h / VB0.w;
+    VB.x = Math.max(VB0.x, Math.min(VB0.x + VB0.w - VB.w, VB.x));
+    VB.y = Math.max(VB0.y, Math.min(VB0.y + VB0.h - VB.h, VB.y));
+  };
+  const zoomAt = (fx, fy, k) => {
+    const px = VB.x + fx * VB.w, py = VB.y + fy * VB.h;
+    VB.w *= k; VB.h = VB.w * VB0.h / VB0.w;
+    VB.x = px - fx * VB.w; VB.y = py - fy * VB.h;
+    clamp(); apply();
+  };
+
+  svg.addEventListener("wheel", e => {
+    e.preventDefault();
+    const b = svg.getBoundingClientRect();
+    zoomAt((e.clientX - b.left)/b.width, (e.clientY - b.top)/b.height,
+           e.deltaY > 0 ? 1.18 : 1/1.18);
+  }, { passive:false });
+
+  let drag = null, moved = 0;
+  svg.addEventListener("pointerdown", e => {
+    drag = { x:e.clientX, y:e.clientY, vx:VB.x, vy:VB.y,
+             b:svg.getBoundingClientRect() };
+    moved = 0; svg.classList.add("drag"); svg.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener("pointermove", e => {
+    const tip = $("#mtip");
+    if(drag){
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      moved = Math.max(moved, Math.abs(dx) + Math.abs(dy));
+      VB.x = drag.vx - dx * VB.w / drag.b.width;
+      VB.y = drag.vy - dy * VB.h / drag.b.height;
+      clamp(); apply();
+      if(tip) tip.style.display = "none";
+      return;
+    }
+    if(!tip) return;
+    const t = e.target.closest("path.cty");
+    if(!t){ tip.style.display = "none"; return; }
+    const iso = t.dataset.iso, c = (GEO.countries || {})[iso];
+    const box = $("#mapbox").getBoundingClientRect();
+    tip.innerHTML = c
+      ? `<b>${esc(c.name)}</b> · ${eur(c.value_eur)} · ${c.pct.toFixed(1)}% of the book`
+      : `<span class="dim">${esc(iso)} · nothing held</span>`;
+    tip.style.display = "block";
+    tip.style.left = Math.min(box.width - tip.offsetWidth - 6, e.clientX - box.left + 12) + "px";
+    tip.style.top  = (e.clientY - box.top + 12) + "px";
+  });
+  const stop = e => { if(drag){ svg.classList.remove("drag"); drag = null; } };
+  svg.addEventListener("pointerup", stop);
+  svg.addEventListener("pointercancel", stop);
+  svg.addEventListener("pointerleave", () => { const t = $("#mtip"); if(t) t.style.display = "none"; });
+
+  svg.addEventListener("click", e => {
+    if(moved > 5) return;                       /* that was a pan, not a click */
+    const t = e.target.closest("path.cty");
+    if(!t){ SEL = { iso:null, risk:null, cp:null }; paintMap(); paintPins(); renderRail(); return; }
+    SEL = { iso:t.dataset.iso, risk:null, cp:null };
+    paintMap(); paintPins(); renderRail();
+  });
+
+  // The pins are sized against the rendered width, so a resize must redraw them.
+  if(!wireMap._resize){
+    wireMap._resize = true;
+    let t = null;
+    window.addEventListener("resize", () => {
+      clearTimeout(t); t = setTimeout(() => { if(document.getElementById("wmap")) paintPins(); }, 180);
+    });
+  }
+
+  $("#zin").onclick  = () => zoomAt(.5, .5, 1/1.4);
+  $("#zout").onclick = () => zoomAt(.5, .5, 1.4);
+  $("#zrst").onclick = () => { VB = { ...VB0 }; apply(); };
+}
+
+/* the rail beside the map */
+function renderRail(){
+  const rail = $("#rail");
+  if(!rail) return;
+
+  if(SEL.cp){
+    const c = (GEO.chokepoints || []).find(x => x.k === SEL.cp);
+    if(c){
+      const r = c.risk ? (GEO.risks || []).find(x => x.k === c.risk) : null;
+      rail.innerHTML = `
+        <div><span class="sub warnc">Chokepoint</span><h3>${esc(c.name)}</h3></div>
+        <div class="sans" style="font-size:.76rem;color:var(--ink-mid);line-height:1.5">${esc(c.flows)}</div>
+        ${c.k !== "TAIWAN" ? `<div style="font-size:.72rem"><a href="/m/MKT/oil#s-flows">Tankers through it, every day, on OIL →</a></div>` : ""}
+        ${r ? `<div><span class="sub">Attached risk</span>
+          <div style="font-size:.76rem">${esc(r.name)} · ${eur(r.value_eur)} · ${r.pct.toFixed(0)}% of the book</div></div>` : ""}
+        ${(c.proxies||[]).length ? `<div><span class="sub">What would move</span><div>${
+          c.proxies.map(watchChip).join("")}</div></div>` : ""}
+        ${(c.news||[]).length ? `<div><span class="sub">Headlines</span>${
+          c.news.map(newsLine).join("")}</div>`
+          : `<div class="dim" style="font-size:.7rem">No headline in the feed mentions it right now.</div>`}`;
+      return;
+    }
+  }
+
+  if(SEL.iso){
+    const c = (GEO.countries || {})[SEL.iso];
+    const rs = (GEO.risks || []).filter(r => expand(r.countries).includes(SEL.iso));
+    const el = (GEO.elections || []).filter(e => e.c === SEL.iso && !e.past);
+    rail.innerHTML = `
+      <div><span class="sub">Country</span>
+        <h3>${esc((c && c.name) || SEL.iso)}</h3>
+        <div style="font-size:.76rem">${c ? eur(c.value_eur) + " · " + c.pct.toFixed(1) + "% of the book"
+          : `<span class="dim">nothing held here</span>`}</div></div>
+      ${c ? `<div><span class="sub">Positions</span>${c.positions.map(p => `
+        <div class="prow"><a class="nm tkr" href="/t/${encodeURIComponent(p.ticker)}">${esc(p.ticker)}</a>
+          <span class="dim">${p.weight != null ? p.weight.toFixed(1) + "%" : ""}</span>
+          <span class="${sgn(p.day_pct)}">${p.day_pct != null ? pct(p.day_pct, 1) : "–"}</span></div>`).join("")}</div>` : ""}
+      ${el.length ? `<div><span class="sub">Scheduled vote</span>${el.map(e => `
+        <div style="font-size:.74rem">${esc(e.what)} · <span class="warnc">in ${e.days} days</span></div>
+        <div class="dim" style="font-size:.66rem">${esc(e.why)}</div>`).join("")}</div>` : ""}
+      <div><span class="sub">Risks that reach it</span>${rs.length ? rs.map(r => `
+        <div class="prow" style="cursor:pointer" data-goto="${esc(r.k)}">
+          <span class="nm">${esc(r.name)}</span><span class="dim">${r.kind}</span>
+          <span>${r.pct.toFixed(0)}%</span></div>`).join("")
+        : `<div class="dim" style="font-size:.7rem">None on the register.</div>`}</div>`;
+    rail.querySelectorAll("[data-goto]").forEach(el2 => el2.onclick = () => {
+      SEL = { iso:null, risk:el2.dataset.goto, cp:null }; OPEN = el2.dataset.goto;
+      refreshRegister(); paintMap(); paintPins(); renderRail();
+      const n = document.getElementById("rk-" + el2.dataset.goto);
+      if(n) n.scrollIntoView({ behavior:"smooth", block:"center" });
+    });
+    return;
+  }
+
+  if(SEL.risk){
+    const r = (GEO.risks || []).find(x => x.k === SEL.risk);
+    if(r){
+      rail.innerHTML = `
+        <div><span class="sub neg">${esc(r.kind)}</span><h3>${esc(r.name)}</h3>
+          <div style="font-size:.76rem">${eur(r.value_eur)} · ${r.pct.toFixed(1)}% of the book
+            · ${r.n_positions} position${r.n_positions === 1 ? "" : "s"}</div></div>
+        <div class="chan">${esc(r.channel)}</div>
+        <div><span class="sub">Countries involved — highlighted</span>
+          <div class="dim" style="font-size:.7rem">${expand(r.countries).join(" · ")}</div></div>
+        <div><span class="sub">Where it reaches a listing</span>
+          <div class="dim" style="font-size:.7rem">${(r.exposed || []).join(" · ") || "through sector and named companies only"}</div>
+          <div class="dim" style="font-size:.64rem;line-height:1.5;margin-top:.2rem">Involvement and
+            exposure are different questions: the United States is involved in most of these, but a
+            US listing is not what takes the hit.</div></div>
+        <div><span class="sub">What would move</span><div>${(r.watch||[]).map(watchChip).join("")}</div></div>`;
+      return;
+    }
+  }
+
+  const cty = Object.values(GEO.countries || {}).sort((a,b) => b.value_eur - a.value_eur);
+  rail.innerHTML = `
+    <div><span class="sub">Your money by country</span>
+      <h3>${eur(GEO.total_eur)}</h3></div>
+    ${cty.map(c => `<div class="prow" style="cursor:pointer" data-iso="${esc(c.iso)}">
+        <span class="nm">${esc(c.name)}</span>
+        <span class="dim">${c.positions.length}</span>
+        <span>${c.pct.toFixed(1)}%</span></div>`).join("")}
+    <div class="dim" style="font-size:.66rem;line-height:1.5">Click a country on the map, or a
+      row here, to see what you own there and which risks name it.</div>`;
+  rail.querySelectorAll("[data-iso]").forEach(el => el.onclick = () => {
+    SEL = { iso:el.dataset.iso, risk:null, cp:null }; paintMap(); paintPins(); renderRail();
+  });
+}
+
+const watchChip = k => {
+  const r = ROW(k);
+  if(!r) return `<span class="wch dim">${esc(k)}</span>`;
+  return `<a class="wch" href="/m/MKT" title="${esc(r.n)}">${esc(r.k)}
+    <b>${lvl(r)}</b><span class="${rowSgn(r)}">${rowChg(r)}</span></a>`;
+};
+
+const newsLine = n => `<a class="news" href="${esc(n.url)}" target="_blank" rel="noopener">
+  <span class="hl" style="font-size:.76rem">${esc(n.headline)}</span>
+  <span class="meta"><span class="dim">${esc(n.source || "")}</span></span></a>`;
+
+/* ---------- 3. the risk register ------------------------------------------ */
+function registerPanel(){
+  return `<div class="panel"><header><h2>Risk register</h2>
+      <span class="hint">structural, not topical — what each risk is, how it reaches this book, and
+        what the feed is saying about it · click to open</span></header>
+    <div class="body" id="register">${registerRows()}</div></div>`;
+}
+
+function registerRows(){
+  const risks = GEO.risks || [];
+  if(!risks.length) return `<div class="dim">No risks computed.</div>`;
+  return risks.map(r => {
+    const open = OPEN === r.k;
+    const direct = r.named_pct || 0, rest = Math.max(0, (r.pct || 0) - direct);
+    return `<div class="rk" id="rk-${esc(r.k)}">
+      <div class="rkhead" data-rk="${esc(r.k)}">
+        <span><span class="rn">${esc(r.name)}</span><br><span class="kind">${esc(r.kind)}</span></span>
+        <span class="bar"><span class="rbar" title="${direct.toFixed(1)}% named directly, ${rest.toFixed(1)}% through sector or country">
+          <i style="left:${direct}%;width:${rest}%"></i><u style="width:${direct}%"></u></span></span>
+        <span class="num" style="text-align:right">${eur(r.value_eur)}</span>
+        <span class="num" style="text-align:right">${r.pct.toFixed(1)}%</span>
+        <span class="np dim" style="text-align:right">${r.n_positions}${r.news_n ? " · " + r.news_n + "n" : ""}</span>
+      </div>
+      ${open ? riskBody(r) : ""}</div>`;
+  }).join("");
+}
+
+function riskBody(r){
+  const hits = r.positions || [];
+  return `<div class="rkbody">
+    <div>
+      <div class="chan">${esc(r.channel)}</div>
+      <div style="margin-top:.5rem"><span class="lbl">Positions it touches</span>${hits.map(h => `<a class="pchip ${h.why === "named" ? "named" : ""}"
+            href="/t/${encodeURIComponent(h.ticker)}"
+            title="${esc(h.name || "")} — ${h.why === "named" ? "named on this risk directly"
+              : h.why === "sector" ? "reached through its sector" : "reached through its country"}">
+            <b>${esc(h.ticker)}</b><span class="w">${h.weight != null ? h.weight.toFixed(1) + "%" : ""}</span>
+            <span class="${sgn(h.day_pct)}">${h.day_pct != null ? pct(h.day_pct, 1) : ""}</span></a>`).join("")}
+        ${r.n_positions > hits.length ? `<span class="dim" style="font-size:.66rem">
+          +${r.n_positions - hits.length} more</span>` : ""}</div>
+      <div style="margin-top:.45rem;font-size:.66rem;color:var(--ink-soft)">
+        ${eur(r.named_eur)} named directly · ${eur(r.sector_eur)} through the sector ·
+        ${eur(r.country_eur)} through the country of listing. A position is counted once,
+        by the strongest link.</div>
+      <div style="margin-top:.45rem"><span class="lbl">What would move</span><br>
+        ${(r.watch || []).map(watchChip).join("")}</div>
+    </div>
+    <div>
+      <span class="lbl">In the feed</span>
+      ${(r.news || []).length ? (r.news || []).map(newsLine).join("")
+        : `<div class="dim" style="font-size:.7rem;padding:.3rem 0">Nothing in the current feed
+           matches this risk. That is information too — it means the market is not being
+           reminded of it today.</div>`}
+      <button class="tbtn" style="margin-top:.4rem" data-map="${esc(r.k)}">Show on the map</button>
+    </div></div>`;
+}
+
+function refreshRegister(){
+  const el = $("#register");
+  if(!el) return;
+  el.innerHTML = registerRows();
+  wireRegister();
+}
+
+function wireRegister(){
+  $$("[data-rk]").forEach(h => h.onclick = () => {
+    OPEN = OPEN === h.dataset.rk ? null : h.dataset.rk;
+    refreshRegister();
+  });
+  $$("[data-map]").forEach(b => b.onclick = ev => {
+    ev.stopPropagation();
+    SEL = { iso:null, risk:b.dataset.map, cp:null };
+    paintMap(); paintPins(); renderRail();
+    const m = $("#mapbox"); if(m) m.scrollIntoView({ behavior:"smooth", block:"center" });
+  });
+}
+
+/* ---------- 4. the exposure matrix ---------------------------------------- */
+function matrixPanel(){
+  const risks = GEO.risks || [], book = GEO.positions || [];
+  if(!risks.length || !book.length) return "";
+  const rows = ALLROWS ? book : book.slice(0, 20);
+  const glyph = w => w === "named" ? `<span class="g-named" title="named on this risk directly">■</span>`
+    : w === "sector" ? `<span class="g-sector" title="reached through its sector">□</span>`
+    : w === "country" ? `<span class="g-country" title="reached through its country of listing">·</span>` : "";
+  return `<div class="panel"><header><h2>Exposure matrix</h2>
+      <span class="hint">every holding against every risk · ■ named directly · □ through its sector ·
+        · through its country${book.length > 20 ? " · showing the largest 20" : ""}</span>
+      ${book.length > 20 ? `<button class="tbtn" id="allRows">${ALLROWS ? "Top 20" : "All " + book.length}</button>` : ""}
+    </header>
+    <div class="body mxwrap"><table class="mx">
+      <thead><tr><th class="l">Position</th><th class="v">Weight</th>
+        ${risks.map(r => `<th title="${esc(r.name)}">${esc(r.k)}</th>`).join("")}
+        <th class="v">Risks</th></tr></thead>
+      <tbody>${rows.map(p => {
+        const n = risks.filter(r => (r.hits || {})[p.ticker]).length;
+        return `<tr><td class="l"><a class="tkr" href="/t/${encodeURIComponent(p.ticker)}">${esc(p.ticker)}</a>
+            <span class="dim" style="font-size:.6rem">${esc((p.sector || "").slice(0, 18))}</span></td>
+          <td class="v">${p.weight != null ? p.weight.toFixed(1) + "%" : "–"}</td>
+          ${risks.map(r => `<td>${glyph((r.hits || {})[p.ticker])}</td>`).join("")}
+          <td class="v">${n}</td></tr>`; }).join("")}
+      </tbody>
+      <tfoot><tr><th class="l">Share of book</th><th class="v"></th>
+        ${risks.map(r => `<th>${r.pct.toFixed(0)}%</th>`).join("")}<th class="v"></th></tr></tfoot>
+    </table></div></div>`;
+}
+
+/* ---------- 5. chokepoints ------------------------------------------------ */
+function chokePanel(){
+  const cps = GEO.chokepoints || [];
+  if(!cps.length) return "";
+  return `<div class="panel"><header><h2>Chokepoints</h2>
+      <span class="hint">the places where a local event becomes a global price · click one to put it
+        on the map</span></header>
+    <div class="cps">${cps.map(c => `
+      <div class="cp ${SEL.cp === c.k ? "on" : ""}" data-cp="${esc(c.k)}">
+        <span class="t">${esc(c.name)}</span>
+        <span class="f">${esc(c.flows)}</span>
+        <span style="margin-top:auto;display:flex;gap:.4rem;flex-wrap:wrap;align-items:baseline">
+          ${(c.proxies || []).map(k => { const r = ROW(k); return r
+            ? `<span class="wch">${esc(r.k)} <b>${lvl(r)}</b><span class="${rowSgn(r)}">${rowChg(r)}</span></span>`
+            : `<span class="wch dim">${esc(k)}</span>`; }).join("")}
+          ${(c.news || []).length ? `<span class="chip hold">${c.news.length} headline${c.news.length === 1 ? "" : "s"}</span>` : ""}
+        </span></div>`).join("")}</div></div>`;
+}
+
+/* ---------- 6. scenarios -------------------------------------------------- */
+function shockPanel(){
+  const sh = GEO.shocks || [];
+  if(!sh.length) return "";
+  return `<div class="panel"><header><h2>If it happens</h2>
+      <span class="hint">each holding's measured beta to the factor, applied to a single shock ·
+        an estimate, and a mild one: in a real shock correlations converge and the loss is
+        usually worse${GEO.beta_coverage != null ? " · " + GEO.beta_coverage + " names have a measured beta" : ""}</span>
+    </header>
+    <div class="body">
+      <div class="sh head"><span>Scenario</span><span class="num">Impact</span>
+        <span class="num">Of book</span><span class="mv">Where it lands</span></div>
+      ${sh.map(s => `<div class="sh">
+        <span><b>${esc(s.name)}</b><br><span class="dim" style="font-size:.62rem">${esc(s.why)}</span></span>
+        <span class="num ${sgn(s.impact_eur)}">${s.impact_eur == null ? "–" : eur(s.impact_eur)}</span>
+        <span class="num ${sgn(s.impact_pct)}">${s.impact_pct == null ? "–" : pct(s.impact_pct, 1)}</span>
+        <span class="mv">${(s.impact_eur < 0 ? (s.worst || []) : (s.best || []))
+          .map(m => `${esc(m.ticker)} ${eur(m.eur)} <span class="dim">β${nf(m.beta,2)}</span>`).join(" · ")}
+          ${s.coverage_pct != null ? `<span class="dim"> · ${s.coverage_pct}% of the book covered</span>` : ""}</span>
+      </div>`).join("")}
+    </div></div>`;
+}
+
+/* ---------- 7. fear and greed --------------------------------------------- */
+function gauge(score){
+  const w = 150, h = 86, cx = 75, cy = 78, r = 62;
+  const P = (a, rr) => [cx + Math.cos(a)*rr, cy - Math.sin(a)*rr];
+  const ang = s => Math.PI * (1 - Math.max(0, Math.min(100, s))/100);
+  const band = (s0, s1, col) => {
+    const [x0,y0] = P(ang(s0), r), [x1,y1] = P(ang(s1), r);
+    return `<path d="M${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 0 1 ${x1.toFixed(1)},${y1.toFixed(1)}"
+      fill="none" stroke="${col}" stroke-width="9"/>`;
+  };
+  let needle = "";
+  if(score != null){
+    const a = ang(score), [nx,ny] = P(a, r - 14);
+    needle = `<line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}"
+        stroke="var(--ink)" stroke-width="2"/>
+      <circle cx="${cx}" cy="${cy}" r="3.4" fill="var(--ink)"/>`;
+  }
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true" style="flex:none">
+    ${band(0,25,"#E0644F")}${band(25,45,"#B4664F")}${band(45,55,"#D9A441")}
+    ${band(55,75,"#5B9E76")}${band(75,100,"#3FB380")}${needle}
+    <text x="6"   y="${cy+12}" fill="#5A6C76" font-size="8" style="font-family:var(--f-mono)">FEAR</text>
+    <text x="${w-30}" y="${cy+12}" fill="#5A6C76" font-size="8" style="font-family:var(--f-mono)">GREED</text></svg>`;
+}
+
+function gaugePanel(){
+  const cnn = (SENT && SENT.cnn) || {}, hs = (SENT && SENT.house) || {};
+  const cell = (title, g, sub, comps, extra) => `
+    <div class="gcell">
+      ${gauge(g.score)}
+      <div class="meta">
+        <div class="sub" style="font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)">${esc(title)}</div>
+        <div class="gval ${bandClass(g.score)}">${g.score != null ? g.score.toFixed(0) : "–"}</div>
+        <div class="grate ${bandClass(g.score)}">${esc(g.rating || "–")}</div>
+        <div class="dim" style="font-size:.64rem;line-height:1.45;margin-top:.2rem">${sub}</div>
+        ${g.error ? `<div class="dim" style="font-size:.62rem;color:var(--warn)">${esc(g.error)}</div>` : ""}
+        <div style="margin-top:.35rem">${(comps || []).map(c => `
+          <div class="gcomp" title="${esc(c.detail || c.rating || "")}">
+            <span class="dim">${esc(c.name)}</span><b class="${bandClass(c.score)}">${c.score.toFixed(0)}</b></div>`).join("")}</div>
+        ${extra || ""}
+      </div></div>`;
+
+  const cnnSub = cnn.ok
+    ? `a week ago ${nf(cnn.week, 0)} · a month ago ${nf(cnn.month, 0)} · a year ago ${nf(cnn.year, 0)}`
+    : `CNN's index could not be read`;
+  const hsSub = hs.ok
+    ? `${hs.n} of CNN's seven components, rebuilt from this app's own data`
+    : `not enough history stored yet`;
+
+  return `<div class="panel"><header><h2>Fear &amp; greed</h2>
+      <span class="hint">CNN's index, and the same idea computed here so there is a second opinion
+        when the first one is unreachable${SENT && SENT.age_s != null ? " · " + ago(SENT.age_s) + " old" : ""}</span></header>
+    <div class="gg">
+      ${cell("CNN", cnn, cnnSub, (cnn.components || []).slice(0, 7),
+        cnn.history && cnn.history.length > 5
+          ? `<div style="margin-top:.4rem">${line(cnn.history.map(p => p.v), 220, 26,
+              cnn.score >= 50 ? "var(--gain)" : "var(--loss)")}
+             <span class="dim" style="font-size:.6rem">${cnn.history.length} sessions</span></div>` : "")}
+      ${cell("This app", hs, hsSub, hs.components || [],
+        hs.missing && hs.missing.length ? `<div class="dim" style="font-size:.62rem;margin-top:.3rem">not yet:
+          ${esc(hs.missing.join(", "))} — <a href="/m/FLOW">FLOW</a> is still collecting their record</div>`
+          : `<div class="dim" style="font-size:.62rem;margin-top:.3rem">put/call and volume breadth from <a href="/m/FLOW">FLOW</a></div>`)}
+    </div></div>`;
+}
+
+/* ---------- 8. the next central-bank move --------------------------------- */
+function fedPanel(){
+  const f = (SENT && SENT.fed) || {};
+  if(!f.next) return `<div class="panel"><header><h2>Next Fed move</h2></header>
+    <div class="body"><div class="note"><b>No meeting list</b>${esc(f.error || "unavailable")}</div></div></div>`;
+  const bars = [["cut","Cut 25bp",f.cut],["hold","Hold",f.hold],["hike","Hike 25bp",f.hike]];
+  const lead = bars.reduce((a,b) => (b[2] || 0) > (a[2] || 0) ? b : a, bars[0]);
+  return `<div class="panel"><header><h2>Next Fed move</h2>
+      <span class="hint">backed out of 30-day fed funds futures, the arithmetic CME's FedWatch uses ·
+        <a href="/m/MKT/bonds#s-path">every meeting ›</a></span></header>
+    <div class="body">
+      <div style="display:flex;gap:1.1rem;flex-wrap:wrap;align-items:baseline;margin-bottom:.5rem">
+        <span><span class="dim" style="font-size:.62rem;letter-spacing:.1em;text-transform:uppercase">FOMC</span>
+          <b style="font-size:.95rem;margin-left:.35rem">${dmy(f.next.date)}</b>
+          <span class="dim">in ${f.next.days} days</span></span>
+        ${f.current != null ? `<span class="dim">effective now <b style="color:var(--ink)">${nf(f.current,2)}%</b></span>` : ""}
+        ${f.implied_post != null ? `<span class="dim">priced after <b style="color:var(--ink)">${nf(f.implied_post,2)}%</b></span>` : ""}
+        ${f.ecb_next ? `<span class="dim">ECB <b style="color:var(--ink)">${dmy(f.ecb_next.date)}</b> · in ${f.ecb_next.days}d</span>` : ""}
+      </div>
+      ${f.ok ? `<div class="fed">${bars.map(([k,label,v]) => `
+        <div class="fb ${lead[0] === k ? "lead" : ""}"><span class="k">${label}</span>
+          <span class="v">${v == null ? "–" : v.toFixed(0) + "%"}</span>
+          <span class="bar"><u style="width:${Math.max(0, Math.min(100, v || 0))}%"></u></span></div>`).join("")}</div>
+        <div class="dim" style="font-size:.64rem;margin-top:.45rem;line-height:1.5">
+          ${esc(f.note || "")}. One step at a time: the probability shown is how far the implied
+          post-meeting rate has travelled toward a 25bp move, so it does not price two moves at once.
+          ${f.contract ? "Read from " + esc(String(f.contract).replace(".CBT", "")) + "." : ""}
+          ${f.stale_baseline ? esc(f.stale_baseline) + "." : ""}</div>`
+      : `<div class="note"><b>Not priced</b>${esc(f.error || "the fed funds futures are missing")}</div>`}
+    </div></div>`;
+}
+
+/* ---------- 9. GPR and elections ------------------------------------------ */
+function gprPanel(){
+  const g = (SENT && SENT.gpr) || {};
+  return `<div class="panel"><header><h2>Geopolitical risk index</h2>
+      <span class="hint">Caldara &amp; Iacoviello — a count of newspaper articles about geopolitical
+        tension, daily since 1900</span></header>
+    <div class="body">
+      ${g.ok ? `
+        <div style="display:flex;gap:1.2rem;align-items:flex-end;flex-wrap:wrap">
+          <span><span class="dim" style="font-size:.62rem;letter-spacing:.1em;text-transform:uppercase">Today</span>
+            <div style="font-size:1.5rem;font-weight:600;line-height:1.1"
+              class="${g.pctile >= 80 ? "warnc" : g.pctile <= 20 ? "pos" : ""}">${nf(g.value,1)}</div></span>
+          <span class="dim">${g.pctile}th percentile of its own year · year average ${nf(g.mean,1)}
+            · as of ${dmy(g.asof)}</span>
+        </div>
+        <div style="margin-top:.5rem">${line((g.history||[]).map(p => p.v), 520, 44,
+          g.pctile >= 80 ? "var(--warn)" : "var(--accent)")}</div>
+        <div class="dim" style="font-size:.64rem;margin-top:.3rem">
+          ${(g.history||[]).length} sessions · the index is a measure of ATTENTION, not of danger:
+          it rises when newspapers write about tension, which is usually after the market has
+          already moved.</div>`
+      : `<div class="note"><b>Index unavailable</b>${esc(g.error || "not fetched")}</div>`}
+    </div></div>`;
+}
+
+function electionPanel(){
+  const el = GEO.elections || [];
+  return `<div class="panel"><header><h2>Scheduled votes</h2>
+      <span class="hint">only the ones that move a currency or a policy rate${
+        GEO.elections_as_of ? " · list last checked " + esc(GEO.elections_as_of) : ""}</span></header>
+    <div class="body">
+      ${el.length ? el.map(e => `<div class="elrow ${e.past ? "dim" : ""}">
+        <span>${dmy(e.d)}</span>
+        <span><b>${esc(e.what)}</b><br><span class="dim" style="font-size:.66rem">${esc(e.why)}</span></span>
+        <span class="${e.past ? "dim" : e.days < 60 ? "warnc" : ""}">${e.past ? "past" : "in " + e.days + "d"}</span>
+      </div>`).join("") : `<div class="dim">No votes listed.</div>`}
+      <div class="dim" style="font-size:.64rem;margin-top:.4rem;line-height:1.5">
+        Elections move policy risk, not usually earnings. The reliable effects are on the currency,
+        on regulated sectors, and on the term premium when fiscal policy is genuinely in question.</div>
+    </div></div>`;
+}
+
+/* ---------- 10. sources --------------------------------------------------- */
+function sourcePanel(){
+  const S = SENT || {};
+  const st = (name, o, note) => {
+    const ok = o && (o.ok === true || (o.ok === undefined && !o.error));
+    // When a feed fails, the useful facts are every URL that was tried and
+    // which transport got furthest — not the word "unavailable".
+    const tried = (o && o.tried || []).map(t =>
+      typeof t === "string" ? t
+      : `${String(t.url || t.symbol || "").split("/").pop()}: ${t.error || t.price || "ok"}`);
+    return `<div class="row" style="align-items:flex-start">
+      <span class="nm">${esc(name)}${o && o.transport
+        ? ` <span class="src">${esc(o.transport)}</span>` : ""}</span>
+      <span class="dim" style="white-space:normal">${esc(o && o.error ? o.error : (note || ""))}${
+        tried.length ? `<br><span style="font-size:.6rem;opacity:.75">${
+          esc(tried.join(" · "))}</span>` : ""}</span>
+      <span class="ch ${ok ? "pos" : "warnc"}">${ok ? "ok" : "no"}</span></div>`;
+  };
+  return `<div class="panel"><header><h2>Sources</h2>
+      <span class="hint">what this page is built from, and what is not answering</span>
+      <button class="tbtn" id="sentRef">Refresh sentiment</button></header>
+    <div class="body"><div class="rows">
+      ${st("Your book", { ok: !GEO.error }, `${(GEO.positions||[]).length} positions · built ${ago(GEO.age_s) || "–"} ago`)}
+      ${st("CNN Fear &amp; Greed", S.cnn, S.cnn && S.cnn.ok ? "production.dataviz.cnn.io" : "")}
+      ${st("Fear &amp; greed, computed here", S.house, S.house && S.house.ok ? S.house.n + " components" : "")}
+      ${st("Fed funds futures (ZQ)", S.fed && S.fed.sources && S.fed.sources.future
+             ? {...S.fed.sources.future, error: S.fed.ok ? null : (S.fed.error || S.fed.sources.future.error)}
+             : S.fed,
+           S.fed && S.fed.ok ? `${(S.fed.sources||{}).future ? (S.fed.sources.future.symbol||"") : ""}`
+             + `, effective rate from ${(S.fed.sources||{}).effective_rate || "FRED"}` : "")}
+      ${st("Geopolitical risk index", S.gpr, S.gpr && S.gpr.ok ? "matteoiacoviello.com, column " + esc(S.gpr.column || "") : "")}
+      ${st("Market proxies", { ok: (BOARD.rows || []).some(r => r.last != null) }, "the MKT board")}
+      ${st("Position betas", { ok: (GEO.beta_coverage || 0) > 0 },
+           (GEO.beta_coverage || 0) + " names have 60+ overlapping observations")}
+    </div>
+    <div class="dim" style="font-size:.64rem;margin-top:.5rem;line-height:1.5">
+      The register itself is hand-written and structural: it describes mechanisms, not this week's
+      events. The news, the prices and the exposure are live. Meeting and election dates were last
+      checked ${esc((S.fed && S.fed.as_of) || GEO.elections_as_of || "–")} — they are shown with their age
+      rather than silently running off the end of the list.</div>
+    </div></div>`;
+}
+
+/* ---------- wiring -------------------------------------------------------- */
+function wire(){
+  wireRegister();
+  $$("[data-cp]").forEach(c => c.onclick = () => {
+    SEL = { iso:null, risk:null, cp: SEL.cp === c.dataset.cp ? null : c.dataset.cp };
+    $$("[data-cp]").forEach(x => x.classList.toggle("on", x.dataset.cp === SEL.cp));
+    paintMap(); paintPins(); renderRail();
+    const m = $("#mapbox"); if(m) m.scrollIntoView({ behavior:"smooth", block:"center" });
+  });
+  $$("[data-l]").forEach(b => b.onclick = () => {
+    LAYERS[b.dataset.l] = !LAYERS[b.dataset.l];
+    b.classList.toggle("on", LAYERS[b.dataset.l]);
+    paintPins();
+  });
+  const all = $("#allRows");
+  if(all) all.onclick = () => { ALLROWS = !ALLROWS; renderAll(); };
+  const sr = $("#sentRef");
+  if(sr) sr.onclick = async () => {
+    sr.textContent = "Fetching…"; sr.disabled = true;
+    try{ await fetch("/api/pf/geo/refresh?what=sentiment", { method:"POST" }); }catch{}
+    sr.textContent = "Refresh sentiment"; sr.disabled = false; load();
+  };
+}
+
+load();
+/* The book moves during the day and the feed turns over; a quiet reload every
+   five minutes keeps the page honest without touching the network hard. */
+setInterval(() => { if(!document.hidden) load(); }, 300000);
+</script>
+</body>
+</html>

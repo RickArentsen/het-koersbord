@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FCF · Het Koersbord</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305080A'/%3E%3Cpath d='M5 23 L12 15 L17 19 L27 7' stroke='%234FA8CE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="/term.css">
+<style>
+.intro{font-family:var(--f-ui);font-size:.8rem;color:var(--ink-mid);line-height:1.55;max-width:70rem;}
+.intro b{color:var(--ink);font-weight:500;}
+.fbar{display:flex;flex-wrap:wrap;gap:.4rem .8rem;align-items:center;margin:.2rem 0 .6rem;font-size:.66rem;}
+.fbar .lbl{font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);}
+.seg{background:var(--ground);border:1px solid var(--rule-strong);color:var(--ink-mid);font-size:.66rem;padding:.14rem .45rem;}
+.seg.on{background:var(--accent-dim);border-color:var(--accent);color:var(--ink);}
+.add{background:var(--ground);border:1px solid var(--rule-strong);color:var(--ink);font-family:var(--f-mono);font-size:.7rem;padding:.14rem .45rem;width:9rem;}
+.add:focus{border-color:var(--accent);outline:none;}
+.tscroll{overflow-x:auto;}
+.tbl{border-collapse:collapse;width:100%;font-size:.72rem;}
+.tbl th{font-weight:500;color:var(--ink-soft);font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;text-align:right;padding:.25rem .45rem;border-bottom:1px solid var(--rule-strong);white-space:nowrap;cursor:pointer;}
+.tbl th.on{color:var(--accent);}
+.tbl td{text-align:right;padding:.24rem .45rem;border-bottom:1px dotted var(--rule);white-space:nowrap;}
+.tbl th:first-child,.tbl td:first-child{text-align:left;}
+.tbl tr.fr{cursor:pointer;}
+.tbl tr.fr:hover td{background:#0E151A;}
+.tbl tr.fr.open td{background:#0D161B;}
+.tbl tr.na td{color:var(--ink-soft);}
+.tbl td .nm{color:var(--ink-mid);font-family:var(--f-ui);font-size:.68rem;margin-left:.4rem;max-width:14rem;display:inline-block;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;}
+.tag{font-size:.54rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--rule-strong);color:var(--ink-soft);padding:0 .25rem;margin-left:.35rem;}
+.tag.ed{border-color:var(--warn-dim);color:var(--warn);}
+.tbl tr.det > td{padding:0;background:var(--sunk);cursor:default;white-space:normal;text-align:left;}
+.det-in{padding:.7rem .8rem .9rem;border-left:2px solid var(--accent);max-width:calc(100vw - 4rem);box-sizing:border-box;}
+.det-hd{display:flex;gap:.7rem;align-items:baseline;margin-bottom:.5rem;font-size:.8rem;}
+.det-hd .sp{flex:1;}
+.x{background:none;border:0;color:var(--ink-soft);font-size:1rem;cursor:pointer;}
+.x:hover{color:var(--loss);}
+.bar{display:inline-block;width:60px;height:7px;background:var(--sunk);position:relative;vertical-align:middle;margin-left:.3rem;}
+.bar i{position:absolute;top:0;bottom:0;}
+.prog{font-size:.68rem;color:var(--ink-soft);margin-bottom:.5rem;}
+.src{font-family:var(--f-ui);font-size:.66rem;color:var(--ink-soft);margin-top:.6rem;line-height:1.5;max-width:70rem;}
+</style>
+</head>
+<body>
+<div id="shell"></div>
+<div class="wrap" id="app"><div class="center">Loading<span class="blink">_</span></div></div>
+<script src="/term.js"></script>
+<script src="/fcfkit.js"></script>
+<script src="/fcf.js"></script>
+</body>
+</html>

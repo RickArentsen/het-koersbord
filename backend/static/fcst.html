@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MVO · Forecast · Het Koersbord</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305080A'/%3E%3Cpath d='M5 23 L12 15 L17 19 L27 7' stroke='%234FA8CE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500&display=swap">
+<link rel="stylesheet" href="/term.css">
+<link rel="stylesheet" href="/kit.css">
+<style>
+#tiles{grid-template-columns:repeat(auto-fill,minmax(165px,1fr));}
+.disc{font-family:var(--f-ui);font-size:.72rem;color:var(--ink-soft);margin-top:.45rem;line-height:1.5;}
+.busy{opacity:.55;transition:opacity .15s;}
+
+/* the controls */
+#ctl{position:sticky;top:var(--barh);z-index:30;background:var(--surface);border:1px solid var(--rule-strong);padding:.45rem .65rem;
+  display:flex;flex-wrap:wrap;gap:.45rem 1.1rem;align-items:center;font-size:.68rem;}
+#ctl .lbl{font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin-right:.35rem;}
+#ctl .grp2{display:inline-flex;align-items:center;}
+#ctl .grp2 .seg{margin-left:-1px;}
+#ctl input[type=number]{background:var(--ground);border:1px solid var(--rule-strong);color:var(--ink);padding:.14rem .35rem;
+  font-family:var(--f-mono);font-size:.7rem;width:8ch;}
+#ctl input.w5{width:8.5ch;}
+#ctl input.w9{width:10ch;}
+#ctl label.ck{display:inline-flex;align-items:center;gap:.3rem;color:var(--ink-mid);cursor:pointer;}
+#ctl label.ck input{accent-color:var(--accent);}
+#ctl .why{font-family:var(--f-ui);color:var(--ink-soft);font-size:.64rem;}
+@media(max-width:760px){#ctl{position:static;}}
+
+/* the fan */
+.fan{position:relative;width:100%;}
+.fan svg{display:block;width:100%;overflow:visible;}
+.fan .ax{font-size:10px;fill:var(--ink-soft);font-family:var(--f-mono);}
+.fan .gl{stroke:var(--rule);stroke-width:1;}
+.fan .hov{fill:transparent;cursor:crosshair;}
+.fan .xh{stroke:var(--ink-soft);stroke-width:1;stroke-dasharray:2 3;}
+.fan .el{font-size:10px;font-family:var(--f-mono);font-weight:600;}
+.fkey{display:flex;flex-wrap:wrap;gap:.3rem 1rem;margin-top:.4rem;font-size:.64rem;color:var(--ink-mid);}
+.fkey span{display:inline-flex;align-items:center;gap:.35rem;}
+.fkey i{display:inline-block;width:18px;height:0;border-top:2px solid;}
+.fkey i.box{height:9px;border:0;}
+.read{font-family:var(--f-ui);font-size:.76rem;color:var(--ink-mid);margin:.55rem 0 0;line-height:1.55;}
+.read b{color:var(--ink);font-weight:500;}
+
+/* the horizons table */
+.ht td.mid{color:var(--ink);font-weight:600;}
+.ht td.put{color:var(--ink-soft);}
+.ht .rng{font-size:.62rem;color:var(--ink-soft);}
+.ht th small{display:block;text-transform:none;letter-spacing:0;font-size:.56rem;color:var(--ink-soft);}
+
+/* sections */
+.two{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:.8rem;}
+@media(max-width:900px){.two{grid-template-columns:1fr;}}
+.txt{font-family:var(--f-ui);font-size:.74rem;color:var(--ink-mid);line-height:1.6;}
+.txt p{margin:.35rem 0;}
+.txt b{color:var(--ink);font-weight:500;}
+.txt ul{margin:.3rem 0;padding-left:1.1rem;}
+.txt li{margin:.2rem 0;}
+.sec{margin:1rem 0 .35rem;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);
+  border-bottom:1px solid var(--rule);padding-bottom:.2rem;}
+.sec:first-child{margin-top:0;}
+.b3c .card.on{box-shadow:inset 0 2px 0 var(--accent);}
+.src a{font-size:.68rem;}
+.empty{font-size:.74rem;color:var(--ink-soft);font-family:var(--f-ui);padding:.4rem 0;}
+</style>
+</head>
+<body>
+<div id="shell"></div>
+<div class="wrap" id="app"><div class="center">Loading<span class="blink">_</span></div></div>
+<script src="/term.js"></script>
+<script src="/kit.js"></script>
+<script src="/fcst.js"></script>
+</body>
+</html>
